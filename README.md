@@ -112,6 +112,5 @@ It is intended for educational and non-commercial use.
 
 For questions or contributions:  
 **Team Members:** Ivory • Shane • Oscar • Peter  
-Course Instructor: Prof. [Your Instructor’s Name]
 
 ---

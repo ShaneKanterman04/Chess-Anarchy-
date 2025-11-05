@@ -5,7 +5,8 @@
   const state = {
     board: [],
     users: [],
-    moves: []
+    moves: [],
+    chat: []
   };
 
   let selection = null;
@@ -17,6 +18,9 @@
   const userNameEl = document.getElementById('user-name');
   const clearSelectionBtn = document.getElementById('clear-selection');
   const resetBtn = document.getElementById('reset');
+  const chatLogEl = document.getElementById('chat-log');
+  const chatForm = document.getElementById('chat-form');
+  const chatInput = document.getElementById('chat-input');
 
   const pieceLabels = {
     br: 'bR',
@@ -125,6 +129,23 @@
     });
   }
 
+  function renderChat(messages) {
+    chatLogEl.innerHTML = '';
+    messages.forEach((message) => {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'chat-message';
+      const sender = document.createElement('span');
+      sender.className = 'sender';
+      sender.textContent = message.userName || message.userId || 'anon';
+      const text = document.createElement('span');
+      text.textContent = message.text;
+      wrapper.appendChild(sender);
+      wrapper.appendChild(text);
+      chatLogEl.appendChild(wrapper);
+    });
+    chatLogEl.scrollTop = chatLogEl.scrollHeight;
+  }
+
   clearSelectionBtn.addEventListener('click', () => {
     selection = null;
     renderBoard(state.board);
@@ -132,6 +153,14 @@
 
   resetBtn.addEventListener('click', () => {
     socket.emit('reset');
+  });
+
+  chatForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const text = chatInput.value.trim();
+    if (!text) return;
+    socket.emit('chat-message', { text });
+    chatInput.value = '';
   });
 
   socket.on('connect', () => {
@@ -150,10 +179,12 @@
     state.board = payload.board || [];
     state.users = payload.users || [];
     state.moves = payload.moves || [];
+    state.chat = payload.chat || [];
     selection = null;
     renderBoard(state.board);
     updateUsers(state.users);
     updateMoveLog(state.moves);
+    renderChat(state.chat);
   });
 
   socket.on('move', ({ board, move }) => {
@@ -163,12 +194,14 @@
     updateMoveLog(state.moves);
   });
 
-  socket.on('reset', ({ board }) => {
+  socket.on('reset', ({ board, chat }) => {
     state.board = board || state.board;
     state.moves = [];
+    state.chat = chat || [];
     selection = null;
     renderBoard(state.board);
     updateMoveLog(state.moves);
+    renderChat(state.chat);
   });
 
   socket.on('user-joined', (user) => {
@@ -179,5 +212,10 @@
   socket.on('user-left', (userId) => {
     state.users = state.users.filter((user) => user.id !== userId);
     updateUsers(state.users);
+  });
+
+  socket.on('chat-message', (message) => {
+    state.chat.push(message);
+    renderChat(state.chat);
   });
 })();

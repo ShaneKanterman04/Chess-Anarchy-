@@ -108,7 +108,7 @@ npm install
 npm start
 ```
 
-Then visit `http://localhost:3000` to open the lightweight front end. The Node server at `server.js` keeps a shared chess board in memory, lets any connected user move pieces with Socket.IO events, and broadcasts the updated state to everyone in the game.
+Then visit `http://localhost:3000` to open the lightweight front end. The Node server at `server.js` keeps a shared chess board in memory, lets any connected user move pieces with Socket.IO events, and broadcasts the updated state and in-game chat to everyone in the game.
 
 ---
 

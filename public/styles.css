@@ -188,6 +188,59 @@ body {
   font-size: 0.85rem;
 }
 
+.chat-log {
+  flex: 1;
+  min-height: 120px;
+  max-height: 40vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.chat-message {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.chat-message .sender {
+  font-weight: 600;
+  margin-right: 0.5rem;
+  color: #38bdf8;
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.chat-form input {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: inherit;
+}
+
+.chat-form button {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #475569;
+  background: #22c55e;
+  color: #0f172a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-form button:hover {
+  background: #4ade80;
+}
+
 @media (max-width: 960px) {
   .layout {
     grid-template-columns: 1fr;

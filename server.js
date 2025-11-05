@@ -22,7 +22,8 @@ const baseBoard = [
 const users = new Map();
 const game = {
   board: freshBoard(),
-  moves: []
+  moves: [],
+  chat: []
 };
 
 function freshBoard() {
@@ -45,7 +46,8 @@ io.on('connection', (socket) => {
   socket.emit('init', {
     board: game.board,
     users: Array.from(users.values()),
-    moves: game.moves
+    moves: game.moves,
+    chat: game.chat
   });
 
   socket.broadcast.emit('user-joined', user);
@@ -79,10 +81,29 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('chat-message', (payload = {}) => {
+    const text = typeof payload.text === 'string' ? payload.text.trim() : '';
+    if (!text) return;
+
+    const message = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      userId: user.id,
+      userName: user.name,
+      text,
+      timestamp: Date.now()
+    };
+
+    game.chat.push(message);
+    if (game.chat.length > 200) game.chat.shift();
+
+    io.emit('chat-message', message);
+  });
+
   socket.on('reset', () => {
     game.board = freshBoard();
     game.moves = [];
-    io.emit('reset', { board: game.board });
+    game.chat = [];
+    io.emit('reset', { board: game.board, chat: game.chat });
   });
 
   socket.on('disconnect', () => {

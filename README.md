@@ -101,6 +101,17 @@ The system follows a simple modular design:
 
 ---
 
+## 🚀 Local Server
+
+```bash
+npm install
+npm start
+```
+
+Then visit `http://localhost:3000` to open the lightweight front end. The Node server at `server.js` keeps a shared chess board in memory, lets any connected user move pieces with Socket.IO events, and broadcasts the updated state and in-game chat to everyone in the game.
+
+---
+
 ## 🧾 License
 
 This project is developed as part of **CSC 330 – Software Design and Development** at *Southern Connecticut State University (SCSU)*.  

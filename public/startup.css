@@ -1,0 +1,43 @@
+.container {
+	display: grid;
+	grid-template-areas: 
+	"header"
+	"subheader"
+	"button" "button";
+	grid-template-columns: auto;
+	grid-template-rows: auto;
+	grid-template-rows: auto auto;
+	place-items: center;
+	
+		transform: translateY(150px); 
+	
+	
+	
+	  background: #1e293b; /* ngl i had to hit up the gpt for this part*/
+	  border: 1px solid #334155;
+	  border-radius: 1rem;
+	  padding: 3rem 4rem;
+	  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+
+.container p {
+  color: #cbd5f5;
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.buttons {
+  display: flex; /* and this one*/
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.player {
+  background-color: #270f2a; /* cant  modify buttons w/o weird shit happening*/
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  
+}

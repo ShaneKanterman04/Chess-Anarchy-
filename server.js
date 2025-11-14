@@ -6,6 +6,8 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+const connection = require('./db');
+
 app.use(express.static('public'));
 
 const baseBoard = [
@@ -32,6 +34,33 @@ function freshBoard() {
 
 function isOnBoard(value) {
   return Number.isInteger(value) && value >= 0 && value < 8;
+}
+function endGame() {
+  const popup = document.getElementById('gameEndedPopup');
+  const popupMessage = popup.querySelector('p');
+  const sql = 'SELECT * FROM bCaptured WHERE ID = ?';
+  connection.query(sql, ['bk'], (err, results) => {
+  if (err) {
+    console.error('Error getting data', err);
+    return;
+  }
+  pieces = results;
+  if ('bk' in results[0]) {
+    meessage = "Black Wins";
+    }
+  else {
+    meessage = "White Wins";
+  }
+  popupMessage.textContent = message;
+  popup.style.display = "block";
+  });
+  connection.end((err) => {
+    if (err) {
+      console.error('Error closing', err);
+      return;
+    }
+    console.log('MySql connection closed.');
+  });
 }
 
 app.get('/', (req, res) => {

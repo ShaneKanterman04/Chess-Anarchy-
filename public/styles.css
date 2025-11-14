@@ -241,6 +241,14 @@ body {
   background: #4ade80;
 }
 
+.popUpOverlay {
+display: none;
+position: absolute;
+z-index: 1000;
+top: 50%;
+left: 50%;
+}
+
 @media (max-width: 960px) {
   .layout {
     grid-template-columns: 1fr;
@@ -264,5 +272,12 @@ body {
     width: 40px;
     height: 40px;
     font-size: 0.8rem;
+  }
+  .popUpOverlay {
+    display: none;
+    position: absolute;
+    z-index: 1000;
+    top: 50%;
+    left: 50%;
   }
 }

@@ -41,9 +41,7 @@ function isOnBoard(value) {
   return Number.isInteger(value) && value >= 0 && value < 8;
 }
 
-app.get('/', (req, res) => {
-  res.json({ status: 'ready', users: users.size });
-});
+
 
 io.on('connection', (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;

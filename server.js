@@ -9,12 +9,13 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 
 
-app.use(express.static('public'));
+//app.use(express.static('public'));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname,'public/pre-index.html'));
 });
 
+app.use(express.static('public'));
 const baseBoard = [
   ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
   ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],

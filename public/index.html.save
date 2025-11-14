@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chess Anarchy Board</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="/socket.io/socket.io.js"></script>
+  <script defer src="main.js"></script>
+</head>
+<body>
+  <header class="top-bar">
+    <h1>Chess Anarchy — Multiplayer Board</h1>
+    <div id="status" class="status">Connecting…</div>
+  </header>
+  <main class="layout">
+    <section class="board-panel">
+      <div class="panel-header">
+        <span>Signed in as <strong> id="user-name">anon</strong></span>
+        <div class="actions">
+          <button id="clear-selection" type="button">Clear selection</button>
+          <button id="reset" type="button">Reset board</button>
+        </div>
+      </div>
+      <div id="board" class="board" aria-label="Chess board"></div>
+      <p class="hint">Select a piece, then the destination square. No rules are enforced yet.</p>
+    </section>
+    <aside class="side-panel">
+      <section class="side-section">
+        <h2>Users</h2>
+        <ul id="user-list" class="user-list"></ul>
+      </section>
+      <section class="side-section">
+        <h2>Moves</h2>
+        <ol id="move-log" class="move-log"></ol>
+      </section>
+      <section class="side-section chat-section">
+        <h2>Chat</h2>
+        <div id="chat-log" class="chat-log"></div>
+        <form id="chat-form" class="chat-form" autocomplete="off">
+          <input id="chat-input" type="text" placeholder="Say something" maxlength="200">
+          <button type="submit">Send</button>
+        </form>
+      </section>
+    </aside>
+  </main>
+</body>
+</html>

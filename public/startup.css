@@ -20,11 +20,11 @@ body {
 	grid-template-rows: auto auto;
 	place-items: center;
 	
-		transform: translateY(150px); 
+	transform: translateY(150px); 
 	
 	
 	
-	  background: #1e293b; /* ngl i had to hit up the gpt for this part*/
+	  background: #1e293b; 
 	  border: 1px solid #334155;
 	  border-radius: 1rem;
 	  padding: 3rem 4rem;
@@ -39,16 +39,27 @@ body {
 }
 
 .buttons {
-  display: flex; /* and this one*/
+  display: flex; 
   flex-wrap: wrap;
   gap: 1rem;
   justify-content: center;
 }
 
-.player {
-  background-color: #270f2a; /* cant  modify buttons w/o weird shit happening*/
+.buttons button {
+background-color: #0f172a;
+  color: #f8fafc;
+  border: none;
   border-radius: 8px;
+  padding: 0.7rem 1.3rem;
   cursor: pointer;
-  text-decoration: none;
-  
+  font-size: 1rem;
+  font-family: inherit;
+
+}
+
+.buttons button:hover {background-color: #646a79}
+
+.buttons button:active {
+	background-color: #646a79;
+  transform: translateY(4px);
 }

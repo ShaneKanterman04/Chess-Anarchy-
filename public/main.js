@@ -61,7 +61,7 @@
  	return;  
    }
 	
-    
+   else {    
     const cell = event.currentTarget;
     const row = Number(cell.dataset.row);
     const col = Number(cell.dataset.col); 
@@ -91,7 +91,7 @@
     });
     selection = null;
   }
-
+}
   function renderBoard(board) {
     boardEl.innerHTML = '';
     board.forEach((row, rowIndex) => {
@@ -116,7 +116,7 @@
     userListEl.innerHTML = '';
     users.forEach((user) => {
       const item = document.createElement('li');
-      item.textContent = `${user.name} (${user.role})`; //trying to pass role into users from server after adding roles 
+      item.textContent = user.name; 
       if (user.id === socket.id) {
         item.classList.add('self');
       }
@@ -129,7 +129,7 @@
     }
   }
 
-  if (state.role == "player"){ //chat disabled for players //somehow this works for players but i cant move pieces
+  if (state.role == "player"){ 
     chatInput.disabled = true;
     chatInput.placeholder = 'chat disabled for players';
   }
@@ -196,8 +196,6 @@
     state.moves = payload.moves || [];
     state.chat = payload.chat || [];
     selection = null;
-    const self = payload.users.find(u => u.id === socket.id);
-    if (self) state.role = self.role;
     renderBoard(state.board);
     updateUsers(state.users);
     updateMoveLog(state.moves);

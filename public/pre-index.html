@@ -15,12 +15,25 @@
 <div class = "subheader"><p> game, or watch? </p></div>
 
 <div class = "buttons"> 
-<div class = "player"> <button onclick="/index.html" id = "play_user">player</button> </div> <!-- so i can configure these w/o touching the grid-->
-<div class = "spectator"> <button onclick="/index.html" id = "spec_user">spectator</button> </div>
+<div class = "player"> <button onclick= "play_user()">player</button> </div> <!-- so i can configure these w/o touching the grid-->
+<div class = "spectator"> <button onclick= "spec_user()">spectator</button> </div>
 </div>
  
 </div>
- 
+
+<script>
+function play_user(){
+      window.location.href = "index.html?role=player";
+}
+
+function spec_user(){
+      window.location.href = "index.html?role=spectator";
+}
+
+
+
+
+</script>
     
 </body>
 </html>

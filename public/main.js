@@ -1,12 +1,16 @@
 (function () {
+  const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
+  const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
+   
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
-  const socket = io({ query: { name: requestedName } });
-
+  const socket = io({ query: { name: requestedName, role } });
+     
   const state = {
     board: [],
     users: [],
     moves: [],
-    chat: []
+    chat: [],
+    role
   };
 
   let selection = null;
@@ -37,6 +41,8 @@
     wp: 'wP'
   };
 
+
+
   function setStatus(text) {
     statusEl.textContent = text;
   }
@@ -50,11 +56,15 @@
     return pieceLabels[code] || '';
   }
 
-  function handleCellClick(event) {
+  function handleCellClick(event, role) {
+   if (state.role == 'spectator'){
+ 	return;  
+   }
+	
+    
     const cell = event.currentTarget;
     const row = Number(cell.dataset.row);
-    const col = Number(cell.dataset.col);
-
+    const col = Number(cell.dataset.col); 
     if (!Number.isInteger(row) || !Number.isInteger(col)) {
       return;
     }
@@ -106,7 +116,7 @@
     userListEl.innerHTML = '';
     users.forEach((user) => {
       const item = document.createElement('li');
-      item.textContent = user.name;
+      item.textContent = `${user.name} (${user.role})`; //trying to pass role into users from server after adding roles 
       if (user.id === socket.id) {
         item.classList.add('self');
       }
@@ -117,6 +127,11 @@
     if (self) {
       userNameEl.textContent = self.name;
     }
+  }
+
+  if (state.role == "player"){ //chat disabled for players //somehow this works for players but i cant move pieces
+    chatInput.disabled = true;
+    chatInput.placeholder = 'chat disabled for players';
   }
 
   function updateMoveLog(moves) {
@@ -181,6 +196,8 @@
     state.moves = payload.moves || [];
     state.chat = payload.chat || [];
     selection = null;
+    const self = payload.users.find(u => u.id === socket.id);
+    if (self) state.role = self.role;
     renderBoard(state.board);
     updateUsers(state.users);
     updateMoveLog(state.moves);

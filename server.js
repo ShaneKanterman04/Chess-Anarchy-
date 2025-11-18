@@ -42,6 +42,131 @@ function isOnBoard(value) {
   return Number.isInteger(value) && value >= 0 && value < 8;
 }
 
+// Move validation functions
+function getPieceColor(piece) {
+  if (!piece) return null;
+  return piece[0]; // 'w' or 'b'
+}
+
+function getPieceType(piece) {
+  if (!piece) return null;
+  return piece[1]; // 'p', 'r', 'n', 'b', 'q', 'k'
+}
+
+function isPathClear(board, from, to) {
+  const rowDiff = to.row - from.row;
+  const colDiff = to.col - from.col;
+  const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
+  const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
+  
+  let currentRow = from.row + rowStep;
+  let currentCol = from.col + colStep;
+  
+  while (currentRow !== to.row || currentCol !== to.col) {
+    if (board[currentRow][currentCol] !== null) {
+      return false;
+    }
+    currentRow += rowStep;
+    currentCol += colStep;
+  }
+  return true;
+}
+
+function isValidPawnMove(board, from, to, piece) {
+  const color = getPieceColor(piece);
+  const direction = color === 'w' ? -1 : 1; // white moves up (decreasing row), black moves down
+  const startRow = color === 'w' ? 6 : 1;
+  const rowDiff = to.row - from.row;
+  const colDiff = Math.abs(to.col - from.col);
+  const targetPiece = board[to.row][to.col];
+  
+  // Move forward one square
+  if (colDiff === 0 && rowDiff === direction && !targetPiece) {
+    return true;
+  }
+  
+  // Move forward two squares from starting position
+  if (colDiff === 0 && rowDiff === 2 * direction && from.row === startRow && !targetPiece) {
+    const middleRow = from.row + direction;
+    if (!board[middleRow][from.col]) {
+      return true;
+    }
+  }
+  
+  // Capture diagonally
+  if (colDiff === 1 && rowDiff === direction && targetPiece && getPieceColor(targetPiece) !== color) {
+    return true;
+  }
+  
+  return false;
+}
+
+function isValidRookMove(board, from, to) {
+  const rowDiff = Math.abs(to.row - from.row);
+  const colDiff = Math.abs(to.col - from.col);
+  
+  // Must move in straight line (horizontal or vertical)
+  if (rowDiff !== 0 && colDiff !== 0) return false;
+  
+  return isPathClear(board, from, to);
+}
+
+function isValidKnightMove(from, to) {
+  const rowDiff = Math.abs(to.row - from.row);
+  const colDiff = Math.abs(to.col - from.col);
+  
+  // L-shape: 2 in one direction, 1 in the other
+  return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+}
+
+function isValidBishopMove(board, from, to) {
+  const rowDiff = Math.abs(to.row - from.row);
+  const colDiff = Math.abs(to.col - from.col);
+  
+  // Must move diagonally
+  if (rowDiff !== colDiff) return false;
+  
+  return isPathClear(board, from, to);
+}
+
+function isValidQueenMove(board, from, to) {
+  // Queen moves like rook or bishop
+  return isValidRookMove(board, from, to) || isValidBishopMove(board, from, to);
+}
+
+function isValidKingMove(from, to) {
+  const rowDiff = Math.abs(to.row - from.row);
+  const colDiff = Math.abs(to.col - from.col);
+  
+  // King moves one square in any direction
+  return rowDiff <= 1 && colDiff <= 1;
+}
+
+function isValidMove(board, from, to, piece) {
+  // Can't move to same square
+  if (from.row === to.row && from.col === to.col) return false;
+  
+  const pieceType = getPieceType(piece);
+  const pieceColor = getPieceColor(piece);
+  const targetPiece = board[to.row][to.col];
+  
+  // Can't capture your own piece
+  if (targetPiece && getPieceColor(targetPiece) === pieceColor) {
+    return false;
+  }
+  
+  // Check piece-specific rules
+  switch (pieceType) {
+    case 'p': return isValidPawnMove(board, from, to, piece);
+    case 'r': return isValidRookMove(board, from, to);
+    case 'n': return isValidKnightMove(from, to);
+    case 'b': return isValidBishopMove(board, from, to);
+    case 'q': return isValidQueenMove(board, from, to);
+    case 'k': return isValidKingMove(from, to);
+    default: return false;
+  }
+}
+
 
 
 io.on('connection', (socket) => {
@@ -69,6 +194,17 @@ io.on('connection', (socket) => {
 
     const piece = payload.piece || game.board[from.row][from.col];
     if (!piece) return;
+
+    // Validate the move
+    if (!isValidMove(game.board, from, to, piece)) {
+      socket.emit('invalid-move', {
+        message: 'Invalid move for this piece',
+        from,
+        to,
+        piece
+      });
+      return;
+    }
 
     // Check if a piece is being captured
     const capturedPiece = game.board[to.row][to.col];

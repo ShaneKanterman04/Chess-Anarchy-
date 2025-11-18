@@ -121,6 +121,31 @@ body {
   outline-offset: -3px;
 }
 
+.cell.valid-target {
+  position: relative;
+}
+
+.cell.valid-target::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: rgba(14, 165, 233, 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cell.valid-target:not(:empty)::after {
+  width: 100%;
+  height: 100%;
+  background: rgba(239, 68, 68, 0.3);
+  border: 3px solid rgba(239, 68, 68, 0.8);
+  border-radius: 0;
+}
+
 .cell.targetable {
   outline: 2px dashed #0ea5e9;
   outline-offset: -2px;

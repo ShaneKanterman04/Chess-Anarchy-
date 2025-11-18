@@ -29,7 +29,9 @@ const users = new Map();
 const game = {
   board: freshBoard(),
   moves: [],
-  chat: []
+  chat: [],
+  capturedWhite: [],
+  capturedBlack: []
 };
 
 function freshBoard() {
@@ -51,7 +53,9 @@ io.on('connection', (socket) => {
     board: game.board,
     users: Array.from(users.values()),
     moves: game.moves,
-    chat: game.chat
+    chat: game.chat,
+    capturedWhite: game.capturedWhite,
+    capturedBlack: game.capturedBlack
   });
 
   socket.broadcast.emit('user-joined', user);
@@ -66,12 +70,24 @@ io.on('connection', (socket) => {
     const piece = payload.piece || game.board[from.row][from.col];
     if (!piece) return;
 
+    // Check if a piece is being captured
+    const capturedPiece = game.board[to.row][to.col];
+    if (capturedPiece) {
+      // Add to appropriate captured list based on piece color
+      if (capturedPiece.startsWith('w')) {
+        game.capturedWhite.push(capturedPiece);
+      } else if (capturedPiece.startsWith('b')) {
+        game.capturedBlack.push(capturedPiece);
+      }
+    }
+
     const move = {
       userId: user.id,
       userName: user.name,
       from,
       to,
       piece,
+      capturedPiece: capturedPiece || null,
       timestamp: Date.now()
     };
 
@@ -81,7 +97,9 @@ io.on('connection', (socket) => {
 
     io.emit('move', {
       board: game.board,
-      move
+      move,
+      capturedWhite: game.capturedWhite,
+      capturedBlack: game.capturedBlack
     });
   });
 
@@ -107,7 +125,14 @@ io.on('connection', (socket) => {
     game.board = freshBoard();
     game.moves = [];
     game.chat = [];
-    io.emit('reset', { board: game.board, chat: game.chat });
+    game.capturedWhite = [];
+    game.capturedBlack = [];
+    io.emit('reset', { 
+      board: game.board, 
+      chat: game.chat,
+      capturedWhite: game.capturedWhite,
+      capturedBlack: game.capturedBlack
+    });
   });
 
   socket.on('disconnect', () => {

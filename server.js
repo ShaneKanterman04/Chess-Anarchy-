@@ -2,6 +2,26 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
+const mysql = require('mysql2');
+const db = mysql.createPool({
+  host     : '34.74.157.230',
+  user     : 'Team5',
+  password : 'Team05!!',
+  database : 'chess',
+ connectionLimit : 10
+});
+
+db.query('SHOW TABLES;', function (error, results, fields) {
+  if (error) {
+    console.log(error);
+    db.end();
+  }
+  else {
+    console.log('Rows: ', results);
+    db.end();
+  }
+});
+
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
@@ -32,6 +52,20 @@ function freshBoard() {
 
 function isOnBoard(value) {
   return Number.isInteger(value) && value >= 0 && value < 8;
+}
+
+function endGame(winner) {
+  const message = ''
+  if (winner == 'wk') {
+    message = 'White wins';
+  }
+  else {
+    message = 'Black wins';
+  }
+  const popUp = document.getElementById('endGamePopUp');
+  const text = document.getElementById('winnerText');
+  text.textContent = message;
+  popupOverlay.style.display = 'block'popUp;
 }
 
 app.get('/', (req, res) => {

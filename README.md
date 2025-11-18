@@ -112,13 +112,6 @@ Then visit `http://localhost:3000` to open the lightweight front end. The Node s
 
 ---
 
-## 🧾 License
-
-This project is developed as part of **CSC 330 – Software Design and Development** at *Southern Connecticut State University (SCSU)*.  
-It is intended for educational and non-commercial use.
-
----
-
 ## 💬 Contact
 
 For questions or contributions:  

@@ -241,6 +241,40 @@ body {
   background: #4ade80;
 }
 
+.captured-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.captured-group h3 {
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem 0;
+  color: #94a3b8;
+}
+
+.captured-pieces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: #0f172a;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+  min-height: 2rem;
+  align-items: center;
+}
+
+.captured-piece {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 0.25rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
 @media (max-width: 960px) {
   .layout {
     grid-template-columns: 1fr;

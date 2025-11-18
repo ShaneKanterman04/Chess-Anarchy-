@@ -10,6 +10,8 @@
     users: [],
     moves: [],
     chat: [],
+    capturedWhite: [],
+    capturedBlack: [],
     role
   };
 
@@ -25,6 +27,8 @@
   const chatLogEl = document.getElementById('chat-log');
   const chatForm = document.getElementById('chat-form');
   const chatInput = document.getElementById('chat-input');
+  const capturedWhiteEl = document.getElementById('captured-white');
+  const capturedBlackEl = document.getElementById('captured-black');
 
   const pieceLabels = {
     br: 'bR',
@@ -161,6 +165,35 @@
     chatLogEl.scrollTop = chatLogEl.scrollHeight;
   }
 
+  function renderCapturedPieces() {
+    console.log('Rendering captured pieces:', state.capturedWhite, state.capturedBlack);
+    if (capturedWhiteEl) {
+      capturedWhiteEl.innerHTML = '';
+      state.capturedWhite.forEach((piece) => {
+        const span = document.createElement('span');
+        span.className = 'captured-piece';
+        span.textContent = labelForPiece(piece);
+        capturedWhiteEl.appendChild(span);
+      });
+      if (state.capturedWhite.length === 0) {
+        capturedWhiteEl.textContent = 'None';
+      }
+    }
+    
+    if (capturedBlackEl) {
+      capturedBlackEl.innerHTML = '';
+      state.capturedBlack.forEach((piece) => {
+        const span = document.createElement('span');
+        span.className = 'captured-piece';
+        span.textContent = labelForPiece(piece);
+        capturedBlackEl.appendChild(span);
+      });
+      if (state.capturedBlack.length === 0) {
+        capturedBlackEl.textContent = 'None';
+      }
+    }
+  }
+
   clearSelectionBtn.addEventListener('click', () => {
     selection = null;
     renderBoard(state.board);
@@ -195,28 +228,38 @@
     state.users = payload.users || [];
     state.moves = payload.moves || [];
     state.chat = payload.chat || [];
+    state.capturedWhite = payload.capturedWhite || [];
+    state.capturedBlack = payload.capturedBlack || [];
     selection = null;
     renderBoard(state.board);
     updateUsers(state.users);
     updateMoveLog(state.moves);
     renderChat(state.chat);
+    renderCapturedPieces();
   });
 
-  socket.on('move', ({ board, move }) => {
+  socket.on('move', ({ board, move, capturedWhite, capturedBlack }) => {
+    console.log('Move received:', { capturedWhite, capturedBlack });
     state.board = board || state.board;
     state.moves.push(move);
+    state.capturedWhite = capturedWhite || state.capturedWhite;
+    state.capturedBlack = capturedBlack || state.capturedBlack;
     renderBoard(state.board);
     updateMoveLog(state.moves);
+    renderCapturedPieces();
   });
 
-  socket.on('reset', ({ board, chat }) => {
+  socket.on('reset', ({ board, chat, capturedWhite, capturedBlack }) => {
     state.board = board || state.board;
     state.moves = [];
     state.chat = chat || [];
+    state.capturedWhite = capturedWhite || [];
+    state.capturedBlack = capturedBlack || [];
     selection = null;
     renderBoard(state.board);
     updateMoveLog(state.moves);
     renderChat(state.chat);
+    renderCapturedPieces();
   });
 
   socket.on('user-joined', (user) => {

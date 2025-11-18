@@ -394,6 +394,8 @@
     updateMoveLog(state.moves);
     renderChat(state.chat);
     renderCapturedPieces();
+    document.getElementById('endGamePopUp').style.display = 'none';
+    document.getElementById('popUpContent').style.display = 'none';
   });
 
   socket.on('user-joined', (user) => {

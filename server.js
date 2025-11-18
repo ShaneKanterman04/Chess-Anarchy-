@@ -34,6 +34,124 @@ function isOnBoard(value) {
   return Number.isInteger(value) && value >= 0 && value < 8;
 }
 
+
+
+
+//checking for a legal move
+function valid_move(board, start_sqr, end_sqr, piece) {
+  const [color, type] = [piece[0], piece[1]];
+  const dx = end_sqr.col - start_sqr.col;
+  const dy = end_sqr.row - start_sqr.row;
+
+  //can't land on another piece
+  const target = board[end_sqr.row][end_sqr.col];
+  if (target && target[0] === color) return false;
+
+  //piece types
+  switch (type) {
+    case 'p': return valid_pawn_move(board, start_sqr, end_sqr, color);
+    case 'r': return valid_rook_move(board, start_sqr, end_sqr);
+    case 'n': return valid_knight_move(dx, dy);
+    case 'b': return valid_bishop_move(board, start_sqr, end_sqr);
+    case 'q': return valid_queen_move(board, start_sqr, end_sqr);
+    case 'k': return valid_king_move(dx, dy);
+    default: return false;
+  }
+
+}
+
+//valid pawn move
+function valid_pawn_move(board, from, to, color) {
+  const dir = color === 'w' ? -1 : 1;
+  const startRow = color === 'w' ? 6 : 1;
+  const dy = to.row - from.row;
+  const dx = to.col - from.col;
+
+  // move forward 1
+  if (dx === 0 && dy === dir && !board[to.row][to.col]) return true;
+
+  // move forward 2 from start spot
+  if (
+    dx === 0 &&
+    dy === 2 * dir &&
+    from.row === startRow &&
+    !board[from.row + dir][from.col] &&
+    !board[to.row][to.col]
+  ) return true;
+
+  // capture diagonally
+  if (
+    Math.abs(dx) === 1 &&
+    dy === dir &&
+    board[to.row][to.col]
+  ) return true;
+
+  return false;
+}
+
+
+//valid rook move
+function valid_rook_move(board, from, to) {
+  if (from.row !== to.row && from.col !== to.col) return false;
+
+  const stepRow = Math.sign(to.row - from.row);
+  const stepCol = Math.sign(to.col - from.col);
+
+  let r = from.row + stepRow;
+  let c = from.col + stepCol;
+
+  while (r !== to.row || c !== to.col) {
+    if (board[r][c]) return false; // path blocked
+    r += stepRow;
+    c += stepCol;
+  }
+  return true;
+}
+
+//valid knight move
+function valid_knight_move(dx, dy) {
+  return (Math.abs(dx) === 1 && Math.abs(dy) === 2) ||
+         (Math.abs(dx) === 2 && Math.abs(dy) === 1);
+}
+
+
+//valid bishop move
+function valid_bishop_move(board, from, to) {
+  const dx = to.col - from.col;
+  const dy = to.row - from.row;
+  if (Math.abs(dx) !== Math.abs(dy)) return false;
+
+  const stepRow = Math.sign(dy);
+  const stepCol = Math.sign(dx);
+
+  let r = from.row + stepRow;
+  let c = from.col + stepCol;
+
+  while (r !== to.row || c !== to.col) {
+    if (board[r][c]) return false; // path blocked
+    r += stepRow;
+    c += stepCol;
+  }
+  return true;
+}
+
+//valid queen move
+function valid_queen_move(board, from, to) {
+  return valid_rook_move(board, from, to) || valid_bishop_move(board, from, to);
+}
+
+//valid king move
+function valid_king_move(dx, dy) {
+  return Math.abs(dx) <= 1 && Math.abs(dy) <= 1;
+}
+
+
+
+
+
+
+
+
 app.get('/', (req, res) => {
   res.json({ status: 'ready', users: users.size });
 });
@@ -52,15 +170,30 @@ io.on('connection', (socket) => {
 
   socket.broadcast.emit('user-joined', user);
 
+  
+
   socket.on('move', (payload = {}) => {
     const from = payload.from;
     const to = payload.to;
+
     if (!from || !to) return;
     if (!isOnBoard(from.row) || !isOnBoard(from.col)) return;
     if (!isOnBoard(to.row) || !isOnBoard(to.col)) return;
 
-    const piece = payload.piece || game.board[from.row][from.col];
+    const piece = game.board[from.row][from.col];
     if (!piece) return;
+
+    const color = piece[0];
+
+    // Validate move
+    if (!valid_move(game.board, from, to, piece)) {
+      socket.emit("invalid-move", { reason: "illegal move" });
+      return;
+    }
+
+    // Apply move
+    game.board[to.row][to.col] = piece;
+    game.board[from.row][from.col] = null;
 
     const move = {
       userId: user.id,
@@ -71,8 +204,6 @@ io.on('connection', (socket) => {
       timestamp: Date.now()
     };
 
-    game.board[to.row][to.col] = piece;
-    game.board[from.row][from.col] = null;
     game.moves.push(move);
 
     io.emit('move', {
@@ -80,6 +211,9 @@ io.on('connection', (socket) => {
       move
     });
   });
+
+
+
 
   socket.on('chat-message', (payload = {}) => {
     const text = typeof payload.text === 'string' ? payload.text.trim() : '';

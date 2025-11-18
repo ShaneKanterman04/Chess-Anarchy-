@@ -45,6 +45,132 @@
     wp: 'wP'
   };
 
+  // Client-side move validation (mirrors server logic for UI feedback)
+  function getPieceColor(piece) {
+    if (!piece) return null;
+    return piece[0];
+  }
+
+  function getPieceType(piece) {
+    if (!piece) return null;
+    return piece[1];
+  }
+
+  function isPathClear(board, from, to) {
+    const rowDiff = to.row - from.row;
+    const colDiff = to.col - from.col;
+    const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
+    const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
+    
+    let currentRow = from.row + rowStep;
+    let currentCol = from.col + colStep;
+    
+    while (currentRow !== to.row || currentCol !== to.col) {
+      if (board[currentRow][currentCol] !== null) {
+        return false;
+      }
+      currentRow += rowStep;
+      currentCol += colStep;
+    }
+    return true;
+  }
+
+  function isValidPawnMove(board, from, to, piece) {
+    const color = getPieceColor(piece);
+    const direction = color === 'w' ? -1 : 1;
+    const startRow = color === 'w' ? 6 : 1;
+    const rowDiff = to.row - from.row;
+    const colDiff = Math.abs(to.col - from.col);
+    const targetPiece = board[to.row][to.col];
+    
+    if (colDiff === 0 && rowDiff === direction && !targetPiece) {
+      return true;
+    }
+    
+    if (colDiff === 0 && rowDiff === 2 * direction && from.row === startRow && !targetPiece) {
+      const middleRow = from.row + direction;
+      if (!board[middleRow][from.col]) {
+        return true;
+      }
+    }
+    
+    if (colDiff === 1 && rowDiff === direction && targetPiece && getPieceColor(targetPiece) !== color) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  function isValidRookMove(board, from, to) {
+    const rowDiff = Math.abs(to.row - from.row);
+    const colDiff = Math.abs(to.col - from.col);
+    
+    if (rowDiff !== 0 && colDiff !== 0) return false;
+    
+    return isPathClear(board, from, to);
+  }
+
+  function isValidKnightMove(from, to) {
+    const rowDiff = Math.abs(to.row - from.row);
+    const colDiff = Math.abs(to.col - from.col);
+    
+    return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+  }
+
+  function isValidBishopMove(board, from, to) {
+    const rowDiff = Math.abs(to.row - from.row);
+    const colDiff = Math.abs(to.col - from.col);
+    
+    if (rowDiff !== colDiff) return false;
+    
+    return isPathClear(board, from, to);
+  }
+
+  function isValidQueenMove(board, from, to) {
+    return isValidRookMove(board, from, to) || isValidBishopMove(board, from, to);
+  }
+
+  function isValidKingMove(from, to) {
+    const rowDiff = Math.abs(to.row - from.row);
+    const colDiff = Math.abs(to.col - from.col);
+    
+    return rowDiff <= 1 && colDiff <= 1;
+  }
+
+  function isValidMove(board, from, to, piece) {
+    if (from.row === to.row && from.col === to.col) return false;
+    
+    const pieceType = getPieceType(piece);
+    const pieceColor = getPieceColor(piece);
+    const targetPiece = board[to.row][to.col];
+    
+    if (targetPiece && getPieceColor(targetPiece) === pieceColor) {
+      return false;
+    }
+    
+    switch (pieceType) {
+      case 'p': return isValidPawnMove(board, from, to, piece);
+      case 'r': return isValidRookMove(board, from, to);
+      case 'n': return isValidKnightMove(from, to);
+      case 'b': return isValidBishopMove(board, from, to);
+      case 'q': return isValidQueenMove(board, from, to);
+      case 'k': return isValidKingMove(from, to);
+      default: return false;
+    }
+  }
+
+  function getValidMoves(board, from, piece) {
+    const validMoves = [];
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        if (isValidMove(board, from, { row, col }, piece)) {
+          validMoves.push({ row, col });
+        }
+      }
+    }
+    return validMoves;
+  }
+
 
 
   function setStatus(text) {
@@ -98,6 +224,8 @@
 }
   function renderBoard(board) {
     boardEl.innerHTML = '';
+    const validMoves = selection ? getValidMoves(board, selection, board[selection.row][selection.col]) : [];
+    
     board.forEach((row, rowIndex) => {
       row.forEach((code, colIndex) => {
         const button = document.createElement('button');
@@ -105,9 +233,17 @@
         button.dataset.row = String(rowIndex);
         button.dataset.col = String(colIndex);
         button.className = `cell ${(rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark'}`;
+        
         if (selection && selection.row === rowIndex && selection.col === colIndex) {
           button.classList.add('selected');
         }
+        
+        // Highlight valid move targets
+        const isValidTarget = validMoves.some(move => move.row === rowIndex && move.col === colIndex);
+        if (isValidTarget) {
+          button.classList.add('valid-target');
+        }
+        
         const label = labelForPiece(code);
         button.textContent = label;
         button.addEventListener('click', handleCellClick);
@@ -166,7 +302,6 @@
   }
 
   function renderCapturedPieces() {
-    console.log('Rendering captured pieces:', state.capturedWhite, state.capturedBlack);
     if (capturedWhiteEl) {
       capturedWhiteEl.innerHTML = '';
       state.capturedWhite.forEach((piece) => {
@@ -239,7 +374,6 @@
   });
 
   socket.on('move', ({ board, move, capturedWhite, capturedBlack }) => {
-    console.log('Move received:', { capturedWhite, capturedBlack });
     state.board = board || state.board;
     state.moves.push(move);
     state.capturedWhite = capturedWhite || state.capturedWhite;
@@ -275,5 +409,12 @@
   socket.on('chat-message', (message) => {
     state.chat.push(message);
     renderChat(state.chat);
+  });
+
+  socket.on('invalid-move', (data) => {
+    setStatus(`Invalid move: ${data.message}`);
+    setTimeout(() => {
+      setStatus('Connected');
+    }, 3000);
   });
 })();

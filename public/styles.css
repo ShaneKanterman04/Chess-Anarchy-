@@ -8,7 +8,13 @@
 }
 
 .popUpOverlay {
-  z-index:1000;
+  z-index: 1000;
+  display: none;
+  margin-left: 25px;
+}
+
+.popUpContent {
+  z-index: 10001;
   display: none;
 }
 
@@ -337,12 +343,5 @@ left: 50%;
     width: 40px;
     height: 40px;
     font-size: 0.8rem;
-  }
-  .popUpOverlay {
-    display: none;
-    position: absolute;
-    z-index: 1000;
-    top: 50%;
-    left: 50%;
   }
 }

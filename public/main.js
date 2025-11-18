@@ -417,4 +417,10 @@
       setStatus('Connected');
     }, 3000);
   });
+
+  socket.on('endGameHandler', (winner) => {
+    document.getElementById('winnerText').textContent = winner;
+    document.getElementById('endGamePopUp').style.display = 'block';
+    document.getElementById('popUpContent').style.display = 'block';
+  });
 })();

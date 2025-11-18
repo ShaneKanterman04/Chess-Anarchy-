@@ -62,20 +62,6 @@ function isOnBoard(value) {
   return Number.isInteger(value) && value >= 0 && value < 8;
 }
 
-function endGame(winner) { //call when king is being taken
-  const message = ''
-  if (winner == 'wk') {
-    message = 'White wins';
-  }
-  else {
-    message = 'Black wins';
-  }
-  const popUp = document.getElementById('endGamePopUp');
-  const text = document.getElementById('winnerText');
-  text.textContent = message;
-  popupOverlay.style.display = 'block'; //makes the popup to announce winner show up
-}
-
 app.get('/', (req, res) => {
   res.json({ status: 'ready', users: users.size });
 });
@@ -247,8 +233,14 @@ io.on('connection', (socket) => {
       // Add to appropriate captured list based on piece color
       if (capturedPiece.startsWith('w')) {
         game.capturedWhite.push(capturedPiece);
+        if (capturedPiece[1] == 'k') {
+          socket.emit('endGameHandler', 'Black Wins');
+        }
       } else if (capturedPiece.startsWith('b')) {
         game.capturedBlack.push(capturedPiece);
+	if (capturedPiece[1] == 'k') {
+          socket.emit('endGameHandler', 'White Wins');
+        }
       }
     }
 

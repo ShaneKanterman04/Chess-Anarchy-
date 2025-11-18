@@ -9,12 +9,6 @@
   <script defer src="main.js"></script>
 </head>
 <body>
-  <div id="endGamePopUp" class="popUpOverlay">
-    <div id="popUpContent">
-      <h2>Game Over</h2>
-      <p id="winnerText">Winner is ...</p>
-    </div>
-  </div>
   <header class="top-bar">
     <h1>Chess Anarchy — Multiplayer Board</h1>
     <div id="status" class="status">Connecting…</div>
@@ -29,25 +23,12 @@
         </div>
       </div>
       <div id="board" class="board" aria-label="Chess board"></div>
-      <p class="hint">Select a piece to see valid moves (highlighted). Legal move validation is now enforced.</p>
+      <p class="hint">Select a piece, then the destination square. No rules are enforced yet.</p>
     </section>
     <aside class="side-panel">
       <section class="side-section">
         <h2>Users</h2>
         <ul id="user-list" class="user-list"></ul>
-      </section>
-      <section class="side-section">
-        <h2>Captured Pieces</h2>
-        <div class="captured-container">
-          <div class="captured-group">
-            <h3>White Captured:</h3>
-            <div id="captured-white" class="captured-pieces">None</div>
-          </div>
-          <div class="captured-group">
-            <h3>Black Captured:</h3>
-            <div id="captured-black" class="captured-pieces">None</div>
-          </div>
-        </div>
       </section>
       <section class="side-section">
         <h2>Moves</h2>

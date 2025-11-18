@@ -7,6 +7,11 @@
   box-sizing: border-box;
 }
 
+.popUpOverlay {
+  z-index:1000;
+  display: none;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -119,6 +124,31 @@ body {
 .cell.selected {
   outline: 3px solid #0ea5e9;
   outline-offset: -3px;
+}
+
+.cell.valid-target {
+  position: relative;
+}
+
+.cell.valid-target::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 12px;
+  background: rgba(14, 165, 233, 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.cell.valid-target:not(:empty)::after {
+  width: 100%;
+  height: 100%;
+  background: rgba(239, 68, 68, 0.3);
+  border: 3px solid rgba(239, 68, 68, 0.8);
+  border-radius: 0;
 }
 
 .cell.targetable {
@@ -241,12 +271,47 @@ body {
   background: #4ade80;
 }
 
+<<<<<<< HEAD
 .popUpOverlay {
 display: none;
 position: absolute;
 z-index: 1000;
 top: 50%;
 left: 50%;
+=======
+.captured-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.captured-group h3 {
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem 0;
+  color: #94a3b8;
+}
+
+.captured-pieces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: #0f172a;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+  min-height: 2rem;
+  align-items: center;
+}
+
+.captured-piece {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 0.25rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+>>>>>>> main
 }
 
 @media (max-width: 960px) {

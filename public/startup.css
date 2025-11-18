@@ -1,0 +1,65 @@
+body {
+  margin: 0;
+  
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+
+
+
+.container {
+	display: grid;
+	grid-template-areas: 
+	"header"
+	"subheader"
+	"button" "button";
+	grid-template-columns: auto;
+	grid-template-rows: auto;
+	grid-template-rows: auto auto;
+	place-items: center;
+	
+	transform: translateY(150px); 
+	
+	
+	
+	  background: #1e293b; 
+	  border: 1px solid #334155;
+	  border-radius: 1rem;
+	  padding: 3rem 4rem;
+	  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+}
+
+
+.container p {
+  color: #cbd5f5;
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.buttons {
+  display: flex; 
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.buttons button {
+background-color: #0f172a;
+  color: #f8fafc;
+  border: none;
+  border-radius: 8px;
+  padding: 0.7rem 1.3rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-family: inherit;
+
+}
+
+.buttons button:hover {background-color: #646a79}
+
+.buttons button:active {
+	background-color: #646a79;
+  transform: translateY(4px);
+}

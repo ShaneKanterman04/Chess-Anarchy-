@@ -1,12 +1,18 @@
 (function () {
+  const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
+  const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
+   
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
-  const socket = io({ query: { name: requestedName } });
-
+  const socket = io({ query: { name: requestedName, role } });
+     
   const state = {
     board: [],
     users: [],
     moves: [],
-    chat: []
+    chat: [],
+    capturedWhite: [],
+    capturedBlack: [],
+    role
   };
 
   let selection = null;
@@ -21,6 +27,8 @@
   const chatLogEl = document.getElementById('chat-log');
   const chatForm = document.getElementById('chat-form');
   const chatInput = document.getElementById('chat-input');
+  const capturedWhiteEl = document.getElementById('captured-white');
+  const capturedBlackEl = document.getElementById('captured-black');
 
   const pieceLabels = {
     br: 'bR',
@@ -37,6 +45,134 @@
     wp: 'wP'
   };
 
+  // Client-side move validation (mirrors server logic for UI feedback)
+  function getPieceColor(piece) {
+    if (!piece) return null;
+    return piece[0];
+  }
+
+  function getPieceType(piece) {
+    if (!piece) return null;
+    return piece[1];
+  }
+
+  function isPathClear(board, from, to) {
+    const rowDiff = to.row - from.row;
+    const colDiff = to.col - from.col;
+    const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
+    const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
+    
+    let currentRow = from.row + rowStep;
+    let currentCol = from.col + colStep;
+    
+    while (currentRow !== to.row || currentCol !== to.col) {
+      if (board[currentRow][currentCol] !== null) {
+        return false;
+      }
+      currentRow += rowStep;
+      currentCol += colStep;
+    }
+    return true;
+  }
+
+  function isValidPawnMove(board, from, to, piece) {
+    const color = getPieceColor(piece);
+    const direction = color === 'w' ? -1 : 1;
+    const startRow = color === 'w' ? 6 : 1;
+    const rowDiff = to.row - from.row;
+    const colDiff = Math.abs(to.col - from.col);
+    const targetPiece = board[to.row][to.col];
+    
+    if (colDiff === 0 && rowDiff === direction && !targetPiece) {
+      return true;
+    }
+    
+    if (colDiff === 0 && rowDiff === 2 * direction && from.row === startRow && !targetPiece) {
+      const middleRow = from.row + direction;
+      if (!board[middleRow][from.col]) {
+        return true;
+      }
+    }
+    
+    if (colDiff === 1 && rowDiff === direction && targetPiece && getPieceColor(targetPiece) !== color) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  function isValidRookMove(board, from, to) {
+    const rowDiff = Math.abs(to.row - from.row);
+    const colDiff = Math.abs(to.col - from.col);
+    
+    if (rowDiff !== 0 && colDiff !== 0) return false;
+    
+    return isPathClear(board, from, to);
+  }
+
+  function isValidKnightMove(from, to) {
+    const rowDiff = Math.abs(to.row - from.row);
+    const colDiff = Math.abs(to.col - from.col);
+    
+    return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
+  }
+
+  function isValidBishopMove(board, from, to) {
+    const rowDiff = Math.abs(to.row - from.row);
+    const colDiff = Math.abs(to.col - from.col);
+    
+    if (rowDiff !== colDiff) return false;
+    
+    return isPathClear(board, from, to);
+  }
+
+  function isValidQueenMove(board, from, to) {
+    return isValidRookMove(board, from, to) || isValidBishopMove(board, from, to);
+  }
+
+  function isValidKingMove(from, to) {
+    const rowDiff = Math.abs(to.row - from.row);
+    const colDiff = Math.abs(to.col - from.col);
+    
+    return rowDiff <= 1 && colDiff <= 1;
+  }
+
+  function isValidMove(board, from, to, piece) {
+    if (from.row === to.row && from.col === to.col) return false;
+    
+    const pieceType = getPieceType(piece);
+    const pieceColor = getPieceColor(piece);
+    const targetPiece = board[to.row][to.col];
+    
+    if (targetPiece && getPieceColor(targetPiece) === pieceColor) {
+      return false;
+    }
+    
+    switch (pieceType) {
+      case 'p': return isValidPawnMove(board, from, to, piece);
+      case 'r': return isValidRookMove(board, from, to);
+      case 'n': return isValidKnightMove(from, to);
+      case 'b': return isValidBishopMove(board, from, to);
+      case 'q': return isValidQueenMove(board, from, to);
+      case 'k': return isValidKingMove(from, to);
+      default: return false;
+    }
+  }
+
+  function getValidMoves(board, from, piece) {
+    const validMoves = [];
+    for (let row = 0; row < 8; row++) {
+      for (let col = 0; col < 8; col++) {
+        if (isValidMove(board, from, { row, col }, piece)) {
+          validMoves.push({ row, col });
+        }
+      }
+    }
+    return validMoves;
+  }
+
+
+
   function setStatus(text) {
     statusEl.textContent = text;
   }
@@ -50,11 +186,15 @@
     return pieceLabels[code] || '';
   }
 
-  function handleCellClick(event) {
+  function handleCellClick(event, role) {
+   if (state.role == 'spectator'){
+ 	return;  
+   }
+	
+   else {    
     const cell = event.currentTarget;
     const row = Number(cell.dataset.row);
-    const col = Number(cell.dataset.col);
-
+    const col = Number(cell.dataset.col); 
     if (!Number.isInteger(row) || !Number.isInteger(col)) {
       return;
     }
@@ -81,9 +221,11 @@
     });
     selection = null;
   }
-
+}
   function renderBoard(board) {
     boardEl.innerHTML = '';
+    const validMoves = selection ? getValidMoves(board, selection, board[selection.row][selection.col]) : [];
+    
     board.forEach((row, rowIndex) => {
       row.forEach((code, colIndex) => {
         const button = document.createElement('button');
@@ -91,9 +233,17 @@
         button.dataset.row = String(rowIndex);
         button.dataset.col = String(colIndex);
         button.className = `cell ${(rowIndex + colIndex) % 2 === 0 ? 'light' : 'dark'}`;
+        
         if (selection && selection.row === rowIndex && selection.col === colIndex) {
           button.classList.add('selected');
         }
+        
+        // Highlight valid move targets
+        const isValidTarget = validMoves.some(move => move.row === rowIndex && move.col === colIndex);
+        if (isValidTarget) {
+          button.classList.add('valid-target');
+        }
+        
         const label = labelForPiece(code);
         button.textContent = label;
         button.addEventListener('click', handleCellClick);
@@ -106,7 +256,7 @@
     userListEl.innerHTML = '';
     users.forEach((user) => {
       const item = document.createElement('li');
-      item.textContent = user.name;
+      item.textContent = user.name; 
       if (user.id === socket.id) {
         item.classList.add('self');
       }
@@ -117,6 +267,11 @@
     if (self) {
       userNameEl.textContent = self.name;
     }
+  }
+
+  if (state.role == "player"){ 
+    chatInput.disabled = true;
+    chatInput.placeholder = 'chat disabled for players';
   }
 
   function updateMoveLog(moves) {
@@ -144,6 +299,34 @@
       chatLogEl.appendChild(wrapper);
     });
     chatLogEl.scrollTop = chatLogEl.scrollHeight;
+  }
+
+  function renderCapturedPieces() {
+    if (capturedWhiteEl) {
+      capturedWhiteEl.innerHTML = '';
+      state.capturedWhite.forEach((piece) => {
+        const span = document.createElement('span');
+        span.className = 'captured-piece';
+        span.textContent = labelForPiece(piece);
+        capturedWhiteEl.appendChild(span);
+      });
+      if (state.capturedWhite.length === 0) {
+        capturedWhiteEl.textContent = 'None';
+      }
+    }
+    
+    if (capturedBlackEl) {
+      capturedBlackEl.innerHTML = '';
+      state.capturedBlack.forEach((piece) => {
+        const span = document.createElement('span');
+        span.className = 'captured-piece';
+        span.textContent = labelForPiece(piece);
+        capturedBlackEl.appendChild(span);
+      });
+      if (state.capturedBlack.length === 0) {
+        capturedBlackEl.textContent = 'None';
+      }
+    }
   }
 
   clearSelectionBtn.addEventListener('click', () => {
@@ -180,28 +363,37 @@
     state.users = payload.users || [];
     state.moves = payload.moves || [];
     state.chat = payload.chat || [];
+    state.capturedWhite = payload.capturedWhite || [];
+    state.capturedBlack = payload.capturedBlack || [];
     selection = null;
     renderBoard(state.board);
     updateUsers(state.users);
     updateMoveLog(state.moves);
     renderChat(state.chat);
+    renderCapturedPieces();
   });
 
-  socket.on('move', ({ board, move }) => {
+  socket.on('move', ({ board, move, capturedWhite, capturedBlack }) => {
     state.board = board || state.board;
     state.moves.push(move);
+    state.capturedWhite = capturedWhite || state.capturedWhite;
+    state.capturedBlack = capturedBlack || state.capturedBlack;
     renderBoard(state.board);
     updateMoveLog(state.moves);
+    renderCapturedPieces();
   });
 
-  socket.on('reset', ({ board, chat }) => {
+  socket.on('reset', ({ board, chat, capturedWhite, capturedBlack }) => {
     state.board = board || state.board;
     state.moves = [];
     state.chat = chat || [];
+    state.capturedWhite = capturedWhite || [];
+    state.capturedBlack = capturedBlack || [];
     selection = null;
     renderBoard(state.board);
     updateMoveLog(state.moves);
     renderChat(state.chat);
+    renderCapturedPieces();
   });
 
   socket.on('user-joined', (user) => {
@@ -217,5 +409,12 @@
   socket.on('chat-message', (message) => {
     state.chat.push(message);
     renderChat(state.chat);
+  });
+
+  socket.on('invalid-move', (data) => {
+    setStatus(`Invalid move: ${data.message}`);
+    setTimeout(() => {
+      setStatus('Connected');
+    }, 3000);
   });
 })();

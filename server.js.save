@@ -1,19 +1,17 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-
+app.use(express.static('public'));
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname,'public/pre-index.html'));
+  res.sendFile(path.join(__dirname,'/public/pre-index.html'));
 });
 
-app.use(express.static('public')); 
 const baseBoard = [
   ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
   ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
@@ -40,7 +38,9 @@ function isOnBoard(value) {
   return Number.isInteger(value) && value >= 0 && value < 8;
 }
 
-
+app.get('/', (req, res) => {
+  res.json({ status: 'ready', users: users.size });
+});
 
 io.on('connection', (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;

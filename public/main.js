@@ -1,12 +1,16 @@
 (function () {
+  const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
+  const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
+   
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
-  const socket = io({ query: { name: requestedName } });
-
+  const socket = io({ query: { name: requestedName, role } });
+     
   const state = {
     board: [],
     users: [],
     moves: [],
-    chat: []
+    chat: [],
+    role
   };
 
   let selection = null;
@@ -37,6 +41,8 @@
     wp: 'wP'
   };
 
+
+
   function setStatus(text) {
     statusEl.textContent = text;
   }
@@ -50,11 +56,15 @@
     return pieceLabels[code] || '';
   }
 
-  function handleCellClick(event) {
+  function handleCellClick(event, role) {
+   if (state.role == 'spectator'){
+ 	return;  
+   }
+	
+   else {    
     const cell = event.currentTarget;
     const row = Number(cell.dataset.row);
-    const col = Number(cell.dataset.col);
-
+    const col = Number(cell.dataset.col); 
     if (!Number.isInteger(row) || !Number.isInteger(col)) {
       return;
     }
@@ -81,7 +91,7 @@
     });
     selection = null;
   }
-
+}
   function renderBoard(board) {
     boardEl.innerHTML = '';
     board.forEach((row, rowIndex) => {
@@ -106,7 +116,7 @@
     userListEl.innerHTML = '';
     users.forEach((user) => {
       const item = document.createElement('li');
-      item.textContent = user.name;
+      item.textContent = user.name; 
       if (user.id === socket.id) {
         item.classList.add('self');
       }
@@ -117,6 +127,11 @@
     if (self) {
       userNameEl.textContent = self.name;
     }
+  }
+
+  if (state.role == "player"){ 
+    chatInput.disabled = true;
+    chatInput.placeholder = 'chat disabled for players';
   }
 
   function updateMoveLog(moves) {

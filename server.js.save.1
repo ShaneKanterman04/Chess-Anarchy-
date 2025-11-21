@@ -6,25 +6,19 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
-const match =  { //making match obj so we can actually have turns before putting a time limit
-     players: {
-       white: null,
-       black: null
-     },	
-     turn: "w" //in classic rules white goes first
-};
-//const mysql = require('mysql2'); //for database queries for chess moves, leaving that to Ivory and 
-//waiting on him since he wanted to do the movement first
 
-/*const connectionObject = {
+const mysql = require('mysql2');
+
+const connectionObject = {
   host : '34.74.157.230',
   user : 'Team5',
   password: 'Team05!!',
   database: 'chess',
   connectionLimit: '10'
 
-};*/
+});
 
+chess_db.query("INSERT INTO User (user_ID) VALUES ")
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname,'public/pre-index.html'));
@@ -70,7 +64,6 @@ function getPieceType(piece) {
   return piece[1]; // 'p', 'r', 'n', 'b', 'q', 'k'
 }
 
-
 function isPathClear(board, from, to) {
   const rowDiff = to.row - from.row;
   const colDiff = to.col - from.col;
@@ -90,19 +83,13 @@ function isPathClear(board, from, to) {
   return true;
 }
 
-/*function getRule(ruleSetID, pieceType) {
+function getRule(ruleSetID, pieceType) {
 
 
-const chess_db = mysql.createPool(ConnectionObj); //shorthand for writing entire db specs
-chess_db.query("SELECT Ruleset_ID FROM Rules WHERE Ruleset_ID=C AND PieceType=Pawn);",
-  function (error, rule_results) {
-   if (error) {
-    console.log(error);
-   } 
-   else {
+const chess_db = mysql.createPool(ConnectionObj); //call this every time, then make query for movement change
+chess_db.query("SELECT FROM RULES WHERE")
+};
 
-
-}*/
 
 function isValidPawnMove(board, from, to, piece) {
   const color = getPieceColor(piece);
@@ -111,8 +98,8 @@ function isValidPawnMove(board, from, to, piece) {
   const rowDiff = to.row - from.row;
   const colDiff = Math.abs(to.col - from.col);
   const targetPiece = board[to.row][to.col];
-  //let ruleSet = getRuleSet(matchID);
-  //let rule = getRule(ruleSet,'P');
+  let ruleSet = getRuleSet(matchID);
+  let rule = getRule(ruleSet,'P');
   // Move forward one square
   if (colDiff === 0 && rowDiff === direction && !targetPiece) {
     return true;
@@ -205,28 +192,12 @@ function isValidMove(board, from, to, piece) {
 io.on('connection', (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
   const user = { id: socket.id, name: String(name), joinedAt: Date.now() };
-  
-  let playerColor;
-
-  if (!match.players.white) {
-   match.players.white = socket.id;
-   playerColor = 'w';
-} else if (!match.players.black) {
-   match.players.black = socket.id;
-   playerColor = 'b';
-
-} else {
-  playerColor = 'spectator'; //become spect if player count for match fills up
-}
-  user.color = playerColor; //upon joining, players are automatically assigned colors (white if 1st, black if 2nd)
   users.set(socket.id, user);
 
   socket.emit('init', {
     board: game.board,
     users: Array.from(users.values()),
     moves: game.moves,
-    color: playerColor,
-    turn: match.turn,
     chat: game.chat,
     capturedWhite: game.capturedWhite,
     capturedBlack: game.capturedBlack
@@ -243,8 +214,7 @@ io.on('connection', (socket) => {
 
     const piece = payload.piece || game.board[from.row][from.col];
     if (!piece) return;
-    const playerColor = user.color;
-    const pieceColor = getPieceColor(piece);
+
     // Validate the move
     if (!isValidMove(game.board, from, to, piece)) {
       socket.emit('invalid-move', {
@@ -255,23 +225,6 @@ io.on('connection', (socket) => {
       });
       return;
     }
-
-   if (playerColor !== pieceColor) { //let color move color
-     socket.emit('invalid-move', { 
-       message: "You cannot move your opponent's pieces"
-
-   });
-     return;
-
-  }
-
-  if (match.turn !== pieceColor) { //let player move depending on turn
-         socket.emit('invalid-move', {
-           message: "Not your turn"
-       });
-         return;
-   
-      }
 
     // Check if a piece is being captured
     const capturedPiece = game.board[to.row][to.col];
@@ -297,7 +250,6 @@ io.on('connection', (socket) => {
     game.board[to.row][to.col] = piece;
     game.board[from.row][from.col] = null;
     game.moves.push(move);
-
 
     io.emit('move', {
       board: game.board,

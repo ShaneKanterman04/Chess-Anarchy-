@@ -8,6 +8,13 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 app.use(express.static('public'));
 
+<<<<<<< HEAD
+=======
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname,'/public/pre-index.html'));
+});
+
+>>>>>>> origin/main
 const baseBoard = [
   ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
   ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
@@ -34,6 +41,7 @@ function isOnBoard(value) {
   return Number.isInteger(value) && value >= 0 && value < 8;
 }
 
+<<<<<<< HEAD
 function valid_move(board, start_spot, end_spot, piece){
 	
 	const [color, type] = [piece[0], piece[1]]; etc.
@@ -42,6 +50,8 @@ function valid_move(board, start_spot, end_spot, piece){
 
 
 
+=======
+>>>>>>> origin/main
 app.get('/', (req, res) => {
   res.json({ status: 'ready', users: users.size });
 });

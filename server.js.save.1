@@ -45,7 +45,6 @@ async function loadMovementRules() {
   }
 }
 
-//grabbing the piece type
 function getPieceMovement(pieceType) {
   return movementCache[pieceType] || null;
 }
@@ -87,18 +86,17 @@ function isPathClear(board, from, to) {
   const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
   const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
 
-  let currentRow = from.row + rowStep;
-  let currentCol = from.col + colStep;
+  let r = from.row + rowStep;
+  let c = from.col + colStep;
 
-  while (currentRow !== to.row || currentCol !== to.col) {
-    if (board[currentRow][currentCol] !== null) return false;
-    currentRow += rowStep;
-    currentCol += colStep;
+  while (r !== to.row || c !== to.col) {
+    if (board[r][c] !== null) return false;
+    r += rowStep;
+    c += colStep;
   }
   return true;
 }
 
-//new db movement code
 async function isValidMoveDB(board, from, to, piece) {
   if (!piece) return false;
 
@@ -113,9 +111,6 @@ async function isValidMoveDB(board, from, to, piece) {
   const target = board[to.row][to.col];
 
    if (target && target[0] === color) return false;
-	
-
-   //piece logic
 
    if (type === 'Pawn') {
    const direction = color === 'w' ? -1 : 1;

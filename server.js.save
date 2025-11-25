@@ -1,20 +1,56 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const path = require('path');
+const mariadb = require('mariadb');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-app.use(express.static('public'));
 
-<<<<<<< HEAD
-=======
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname,'/public/pre-index.html'));
+//The connection to MariaDB
+const pool = mariadb.createPool({
+  host: '34.74.157.230',
+  user: 'Team5',
+  password: 'Team05!!',
+  database: 'chess',
+  connectionLimit: 5
 });
 
->>>>>>> origin/main
+const RULESET_ID = 'C';
+let movement_cache = {};
+
+async function loadMovementRules() {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query(
+      'SELECT piece_type, horizontal, vertical, diagonal FROM rules  WHERE Ruleset_ID = ?',
+      [RULESET_ID]
+    );
+    movementCache = {};
+    rows.forEach(row => {
+      movementCache[row.piece_type] = {
+        horizontal: row.horizontal,
+        vertical: row.vertical,
+        diagonal: row.diagonal
+      };
+    });
+    console.log('Movement rules loaded:', movementCache);
+  } finally {
+    if (conn) conn.release();
+  }
+}
+
+async function getPieceMovement(pieceType) {
+  return movementCache[pieceType] || null;
+}
+
+// Load rules at startup
+loadMovementRules().catch(err => console.error('Failed to load movement rules:', err));
+
+
 const baseBoard = [
   ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
   ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
@@ -26,59 +62,151 @@ const baseBoard = [
   ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
 ];
 
-const users = new Map();
-const game = {
-  board: freshBoard(),
-  moves: [],
-  chat: []
-};
-
 function freshBoard() {
-  return baseBoard.map((row) => row.slice());
+  return baseBoard.map(row => row.slice());
 }
 
 function isOnBoard(value) {
   return Number.isInteger(value) && value >= 0 && value < 8;
 }
 
-<<<<<<< HEAD
-function valid_move(board, start_spot, end_spot, piece){
-	
-	const [color, type] = [piece[0], piece[1]]; etc.
-	const dx = to.col - from.col;
-	const dy = to.row - from.row;
+function getPieceColor(piece) {
+  return piece ? piece[0] : null;
+}
 
+function getPieceType(piece) {
+  return piece ? piece[1] : null;
+}
 
+function isPathClear(board, from, to) {
+  const rowDiff = to.row - from.row;
+  const colDiff = to.col - from.col;
+  const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
+  const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
 
-=======
->>>>>>> origin/main
+  let r = from.row + rowStep;
+  let c = from.col + colStep;
+
+  while (r !== to.row || c !== to.col) {
+    if (board[r][c] !== null) return false;
+    r += rowStep;
+    c += colStep;
+  }
+  return true;
+}
+
+async function isValidMoveDB(board, from, to, piece) {
+  if (!piece) return false;
+
+  const color = getPieceColor(piece);
+  const typeMap = { p: 'Pawn', r: 'Rook', n: 'Knight', b: 'Bishop', q: 'Queen', k: 'King' };
+  const type = typeMap[getPieceType(piece)];
+  const moveData = await getPieceMovement(type);
+  if (!moveData) return false;
+
+  const rowDiff = to.row - from.row;
+  const colDiff = to.col - from.col;
+  const target = board[to.row][to.col];
+
+   if (target && target[0] === color) return false;
+
+   if (type === 'Pawn') {
+   const direction = color === 'w' ? -1 : 1;
+   const startRow = color === 'w' ? 6 : 1;
+
+    if (colDiff === 0 && rowDiff === direction && !target) return true;
+    
+    if (colDiff === 0 && rowDiff === 2 * direction && from.row === startRow &&
+        !target && !board[from.row + direction][from.col]) return true;
+
+    if (Math.abs(colDiff) === 1 && rowDiff === direction && target && target[0] !== color) return true;
+
+    return false;
+  }
+
+  if (type === 'Knight') {
+    return (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 1) ||
+           (Math.abs(rowDiff) === 1 && Math.abs(colDiff) === 2);
+  }
+
+  if (type === 'King') {
+    return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
+  }
+
+  if (rowDiff === 0 && Math.abs(colDiff) <= moveData.horizontal) {
+    return isPathClear(board, from, to);
+  }
+
+  if (colDiff === 0 && Math.abs(rowDiff) <= moveData.vertical) {
+    return isPathClear(board, from, to);
+  }
+
+  if (Math.abs(rowDiff) === Math.abs(colDiff) && Math.abs(rowDiff) <= moveData.diagonal) {
+    return isPathClear(board, from, to);
+  }
+
+  return false;
+}
+
+const users = new Map();
+const game = {
+  board: freshBoard(),
+  moves: [],
+  chat: [],
+  capturedWhite: [],
+  capturedBlack: []
+};
+
 app.get('/', (req, res) => {
-  res.json({ status: 'ready', users: users.size });
+  res.sendFile(path.join(__dirname, 'public/pre-index.html'));
 });
+app.use(express.static('public'));
 
 io.on('connection', (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
-  const user = { id: socket.id, name: String(name), joinedAt: Date.now() };
+  const user = { id: socket.id, name, joinedAt: Date.now() };
   users.set(socket.id, user);
 
   socket.emit('init', {
     board: game.board,
     users: Array.from(users.values()),
     moves: game.moves,
-    chat: game.chat
+    chat: game.chat,
+    capturedWhite: game.capturedWhite,
+    capturedBlack: game.capturedBlack
   });
 
   socket.broadcast.emit('user-joined', user);
 
-  socket.on('move', (payload = {}) => {
-    const from = payload.from;
-    const to = payload.to;
-    if (!from || !to) return;
-    if (!isOnBoard(from.row) || !isOnBoard(from.col)) return;
-    if (!isOnBoard(to.row) || !isOnBoard(to.col)) return;
+  socket.on('move', async (payload = {}) => {
+    const from = payload.from; //starting spot
+    const to = payload.to; //destination spot
+    const piece = payload.piece || game.board[from.row][from.col]; //the piece being moved
 
-    const piece = payload.piece || game.board[from.row][from.col];
-    if (!piece) return;
+    //checks for valid movement
+    if (!from || !to || !piece) return;
+    if (!isOnBoard(from.row) || !isOnBoard(from.col) || !isOnBoard(to.row) || !isOnBoard(to.col)) return;
+
+    //validate move in the database
+    const valid = await isValidMoveDB(game.board, from, to, piece);
+    if (!valid) {
+      socket.emit('invalid-move', { message: 'Invalid move for this piece', from, to, piece });
+      return;
+    }
+
+    // Check if a piece is being captured
+    const capturedPiece = game.board[to.row][to.col];
+    if (capturedPiece) {
+      // Add to appropriate captured list based on piece color
+      if (capturedPiece.startsWith('w')) {
+        game.capturedWhite.push(capturedPiece);
+      } else if (capturedPiece.startsWith('b')) {
+        game.capturedBlack.push(capturedPiece);
+      }
+    }
+
+    game.board[to.row][to.col] = piece;
+    game.board[from.row][from.col] = null;
 
     const move = {
       userId: user.id,
@@ -86,16 +214,16 @@ io.on('connection', (socket) => {
       from,
       to,
       piece,
+      capturedPiece: capturedPiece || null,
       timestamp: Date.now()
     };
-
-    game.board[to.row][to.col] = piece;
-    game.board[from.row][from.col] = null;
     game.moves.push(move);
 
     io.emit('move', {
       board: game.board,
-      move
+      move,
+      capturedWhite: game.capturedWhite,
+      capturedBlack: game.capturedBlack
     });
   });
 
@@ -110,10 +238,8 @@ io.on('connection', (socket) => {
       text,
       timestamp: Date.now()
     };
-
     game.chat.push(message);
     if (game.chat.length > 200) game.chat.shift();
-
     io.emit('chat-message', message);
   });
 
@@ -121,7 +247,14 @@ io.on('connection', (socket) => {
     game.board = freshBoard();
     game.moves = [];
     game.chat = [];
-    io.emit('reset', { board: game.board, chat: game.chat });
+    game.capturedWhite = [];
+    game.capturedBlack = [];
+    io.emit('reset', {
+      board: game.board,
+      chat: game.chat,
+      capturedWhite: game.capturedWhite,
+      capturedBlack: game.capturedBlack
+    });
   });
 
   socket.on('disconnect', () => {
@@ -132,5 +265,5 @@ io.on('connection', (socket) => {
 
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
-  console.log(`chess server ready on port ${port}`);
+  console.log(`Chess server ready on port ${port}`);
 });

@@ -245,7 +245,7 @@ io.on('connection', (socket) => {
     const playerColor = user.color; 
     const pieceColor = getPieceColor(piece);
 
-    console.log('MOVE ATTEMPT', {
+    console.log('MOVE ATTEMPT', { //this was for debugging, but we can show it to the class next presentation to demonstrate
     user: user.name,
     userId: user.id,
     playerColor,
@@ -349,9 +349,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('disconnect', (reason) => {
-  userCounter--;
-  console.log("DISCONNECT:", socket.id, "reason:", reason); //debug for why player left
+  socket.on('disconnect', () => {
   if (match.players.white === socket.id) { //if either player leaves they lose their color
     match.players.white = null;
     console.log("White player disconnected, slot freed");

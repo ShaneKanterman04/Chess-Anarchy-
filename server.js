@@ -200,8 +200,6 @@ function isValidMove(board, from, to, piece) {
   }
 }
 
-
-
 io.on('connection', (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
   const user = { id: socket.id, name: String(name), joinedAt: Date.now() };
@@ -243,8 +241,20 @@ io.on('connection', (socket) => {
 
     const piece = payload.piece || game.board[from.row][from.col];
     if (!piece) return;
-    const playerColor = user.color;
+    
+    const playerColor = user.color; 
     const pieceColor = getPieceColor(piece);
+
+    console.log('MOVE ATTEMPT', {
+    user: user.name,
+    userId: user.id,
+    playerColor,
+    piece,
+    pieceColor,
+    matchTurn: match.turn,
+    from,
+    to
+  });
     // Validate the move
     if (!isValidMove(game.board, from, to, piece)) {
       socket.emit('invalid-move', {
@@ -298,7 +308,7 @@ io.on('connection', (socket) => {
     game.board[from.row][from.col] = null;
     game.moves.push(move);
 
-
+    match.turn = match.turn === 'w' ? 'b' : 'w'; //change turns
     io.emit('move', {
       board: game.board,
       move,
@@ -339,7 +349,18 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', (reason) => {
+  userCounter--;
+  console.log("DISCONNECT:", socket.id, "reason:", reason); //debug for why player left
+  if (match.players.white === socket.id) { //if either player leaves they lose their color
+    match.players.white = null;
+    console.log("White player disconnected, slot freed");
+  }
+
+  if (match.players.black === socket.id) {
+    match.players.black = null;
+    console.log("Black player disconnected, slot freed");
+  }
     users.delete(socket.id);
     io.emit('user-left', user.id);
   });

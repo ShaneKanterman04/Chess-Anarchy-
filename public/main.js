@@ -1,10 +1,14 @@
+
+
 (function () {
   const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
   const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
    
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
   const socket = io({ query: { name: requestedName, role } });
-     
+  window.addEventListener("beforeunload", () => {
+       socket.disconnect();
+   });     
   const state = {
     board: [],
     users: [],

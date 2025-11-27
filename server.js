@@ -13,17 +13,7 @@ const match =  { //making match obj so we can actually have turns before putting
      },	
      turn: "w" //in classic rules white goes first
 };
-//const mysql = require('mysql2'); //for database queries for chess moves, leaving that to Ivory and 
-//waiting on him since he wanted to do the movement first
 
-/*const connectionObject = {
-  host : '34.74.157.230',
-  user : 'Team5',
-  password: 'Team05!!',
-  database: 'chess',
-  connectionLimit: '10'
-
-};*/
 
 
 app.get('/', (req, res) => {
@@ -90,19 +80,6 @@ function isPathClear(board, from, to) {
   return true;
 }
 
-/*function getRule(ruleSetID, pieceType) {
-
-
-const chess_db = mysql.createPool(ConnectionObj); //shorthand for writing entire db specs
-chess_db.query("SELECT Ruleset_ID FROM Rules WHERE Ruleset_ID=C AND PieceType=Pawn);",
-  function (error, rule_results) {
-   if (error) {
-    console.log(error);
-   } 
-   else {
-
-
-}*/
 
 function isValidPawnMove(board, from, to, piece) {
   const color = getPieceColor(piece);
@@ -111,9 +88,6 @@ function isValidPawnMove(board, from, to, piece) {
   const rowDiff = to.row - from.row;
   const colDiff = Math.abs(to.col - from.col);
   const targetPiece = board[to.row][to.col];
-  //let ruleSet = getRuleSet(matchID);
-  //let rule = getRule(ruleSet,'P');
-  // Move forward one square
   if (colDiff === 0 && rowDiff === direction && !targetPiece) {
     return true;
   }
@@ -200,30 +174,76 @@ function isValidMove(board, from, to, piece) {
   }
 }
 
+let timer = .10;
+
+function timerOnWhenPlayersJoin(){
+if (match.players.white && match.players.black){ //activate when both colors aren't null (both players join)
+
+const countdown = setInterval(() => {
+      timer -= .01;
+
+      io.emit('Timer:',{timer});
+   if (!match.players.white || !match.players.black) { //if either player leaves, stop timer
+        timer = .10;
+        clearInterval(countdown);
+     } 	
+
+   if (timer <= 0) {
+    timer = 0;
+    io.emit('Timer:',{message: "Times up!"});
+    clearInterval(countdown);
+    timer = .10;
+    //code for win/stalemate cond
+    return;
+   }
+  },1000);  
+   
+   
+ }
+}
+
+function timerResetWhenPlayerMoves (){
+
+switch (match.turn){
+     case "w":
+	io.emit("Timer:",{message:"White's turn"});
+	break;
+     case "b":
+	io.emit("Timer:",{message:"Black's turn"});
+	break;
+     }
+timer = .10;
+timerOnWhenPlayersJoin();
+
+
+
+}
 io.on('connection', (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
   const user = { id: socket.id, name: String(name), joinedAt: Date.now() };
-  
   let playerColor;
 
-  if (!match.players.white) {
+  if (!match.players.white) { //is white in players falsy (null, undefined, NaN, false, "") in the match obj? Assign that color to socket user 
    match.players.white = socket.id;
    playerColor = 'w';
-} else if (!match.players.black) {
+} else if (!match.players.black) { //give second player black if black is also falsy
    match.players.black = socket.id;
    playerColor = 'b';
+   
 
 } else {
   playerColor = 'spectator'; //become spect if player count for match fills up
 }
   user.color = playerColor; //upon joining, players are automatically assigned colors (white if 1st, black if 2nd)
   users.set(socket.id, user);
+  timerOnWhenPlayersJoin(); //called when two players join match
 
   socket.emit('init', {
     board: game.board,
     users: Array.from(users.values()),
     moves: game.moves,
     color: playerColor,
+    timer: timer,
     turn: match.turn,
     chat: game.chat,
     capturedWhite: game.capturedWhite,
@@ -245,16 +265,7 @@ io.on('connection', (socket) => {
     const playerColor = user.color; 
     const pieceColor = getPieceColor(piece);
 
-    console.log('MOVE ATTEMPT', { //this was for debugging, but we can show it to the class next presentation to demonstrate
-    user: user.name,
-    userId: user.id,
-    playerColor,
-    piece,
-    pieceColor,
-    matchTurn: match.turn,
-    from,
-    to
-  });
+    
     // Validate the move
     if (!isValidMove(game.board, from, to, piece)) {
       socket.emit('invalid-move', {
@@ -283,6 +294,7 @@ io.on('connection', (socket) => {
    
       }
 
+ 
     // Check if a piece is being captured
     const capturedPiece = game.board[to.row][to.col];
     if (capturedPiece) {
@@ -308,7 +320,13 @@ io.on('connection', (socket) => {
     game.board[from.row][from.col] = null;
     game.moves.push(move);
 
-    match.turn = match.turn === 'w' ? 'b' : 'w'; //change turns
+    match.turn = match.turn === 'w' ? 'b' : 'w'; // after movement, if white moved, black can move, vice versa
+  if (timer > 0) {
+    timerResetWhenPlayerMoves();  //call this when turn happens, and the timer's still going
+    }
+  else {
+    //pack it up bro you're not fast enough (end game)
+    }
     io.emit('move', {
       board: game.board,
       move,
@@ -316,6 +334,7 @@ io.on('connection', (socket) => {
       capturedBlack: game.capturedBlack
     });
   });
+
 
   socket.on('chat-message', (payload = {}) => {
     const text = typeof payload.text === 'string' ? payload.text.trim() : '';

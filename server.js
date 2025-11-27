@@ -189,6 +189,7 @@ function formatTimer (totalSeconds) {
 }
 let countdown = null;
 let timer = 10;
+let startTime = timer;
 function timerOnWhenPlayersJoin(){
 if (countdown) clearInterval(countdown);
 if (match.players.white && match.players.black){ //activate when both colors aren't null (both players join)
@@ -382,11 +383,15 @@ io.on('connection', (socket) => {
     game.chat = [];
     game.capturedWhite = [];
     game.capturedBlack = [];
+    match.turn = 'w';
+    timer = startTime;
     io.emit('reset', { 
       board: game.board, 
       chat: game.chat,
       capturedWhite: game.capturedWhite,
-      capturedBlack: game.capturedBlack
+      capturedBlack: game.capturedBlack,
+      match: match.turn,
+      timer: timer
     });
   });
 

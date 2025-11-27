@@ -228,15 +228,16 @@
   }
 }
 
+// Peter's special socket listeners for the timer and turn events
 socket.on('Timer:', (data) => {
 
-	if (data.message) {
+	if (data.message) { //if there's no "Times up" message from the server, just show the timer
          showTime.textContent = data.message;
          return;
         }
 
 	if (data.formatted !== undefined) {
-        showTime.textContent = data.formatted; // or whole seconds
+        showTime.textContent = data.formatted; 
 	}
 
 });
@@ -249,6 +250,41 @@ socket.on('Turn:', data => {
     }
 });
 
+function renderTurn(turn) {
+  const turnBox = document.getElementById('turn-box');
+
+  if (!turnBox) return; // fail-safe
+
+  if (turn === 'w') {
+    turnBox.textContent = "White's turn";
+  } else if (turn === 'b') {
+    turnBox.textContent = "Black's turn";
+  } 
+}
+
+function formatTimer (totalSeconds) {
+  totalSeconds = Math.ceil(totalSeconds); //round up to integer
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  // Pad with leading zeros if necessary
+  const formattedMinutes = String(minutes).padStart(2, '0');
+  const formattedSeconds = String(seconds).padStart(2, '0');
+
+  return `${formattedMinutes}:${formattedSeconds}`;
+
+
+}
+
+function renderTimer(time) {
+  const timerBox = document.getElementById('timer-box');
+
+  if (!timerBox) return; // fail-safe
+
+  
+  timerBox.textContent = formatTimer(time);
+
+}
   function renderBoard(board) {
     boardEl.innerHTML = '';
     const validMoves = selection ? getValidMoves(board, selection, board[selection.row][selection.col]) : [];
@@ -410,13 +446,22 @@ socket.on('Turn:', data => {
     renderCapturedPieces();
   });
 
-  socket.on('reset', ({ board, chat, capturedWhite, capturedBlack }) => {
+  socket.on('reset', ({ board, chat, capturedWhite, capturedBlack, match, timer }) => {
     state.board = board || state.board;
     state.moves = [];
     state.chat = chat || [];
     state.capturedWhite = capturedWhite || [];
     state.capturedBlack = capturedBlack || [];
     selection = null;
+    if (match !== undefined) { 
+    state.turn = match;
+    renderTurn(state.turn);
+    }
+
+    if (timer !== undefined) {
+    state.timer = timer;
+    renderTimer(state.timer);
+    }
     renderBoard(state.board);
     updateMoveLog(state.moves);
     renderChat(state.chat);

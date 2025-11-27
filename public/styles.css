@@ -181,6 +181,28 @@ body {
   padding-bottom: 0.5rem;
 }
 
+.timer-and-turn .info-box{
+   background: #0f172a;
+  border: 1px solid #334155;   /* the dark navy border */
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+}
+/* Label text like "Timer:" and "Turn:" */
+.timer-and-turn .label {
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+/* The dynamic value (time + turn) */
+.timer-and-turn .value {
+  font-weight: 700;
+  color: #f8fafc;
+}
+
 .user-list,
 .move-log {
   list-style: none;

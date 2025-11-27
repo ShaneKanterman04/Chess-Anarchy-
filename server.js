@@ -174,17 +174,31 @@ function isValidMove(board, from, to, piece) {
   }
 }
 
-let timer = .10;
+function formatTimer (totalSeconds) {
+  totalSeconds = Math.ceil(totalSeconds); //round up to integer
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  
+  // Pad with leading zeros if necessary
+  const formattedMinutes = String(minutes).padStart(2, '0');
+  const formattedSeconds = String(seconds).padStart(2, '0');
 
+  return `${formattedMinutes}:${formattedSeconds}`;
+
+
+}
+let countdown = null;
+let timer = 10;
 function timerOnWhenPlayersJoin(){
+if (countdown) clearInterval(countdown);
 if (match.players.white && match.players.black){ //activate when both colors aren't null (both players join)
 
-const countdown = setInterval(() => {
-      timer -= .01;
+    countdown = setInterval(() => {
+      timer -= 1;
 
-      io.emit('Timer:',{timer});
+      io.emit('Timer:',{raw: timer, formatted: formatTimer(timer)});
    if (!match.players.white || !match.players.black) { //if either player leaves, stop timer
-        timer = .10;
+        timer = 10;
         clearInterval(countdown);
      } 	
 
@@ -192,7 +206,7 @@ const countdown = setInterval(() => {
     timer = 0;
     io.emit('Timer:',{message: "Times up!"});
     clearInterval(countdown);
-    timer = .10;
+    timer = 10;
     //code for win/stalemate cond
     return;
    }
@@ -203,16 +217,21 @@ const countdown = setInterval(() => {
 }
 
 function timerResetWhenPlayerMoves (){
+io.emit('Turn:', { turn: match.turn }); 
 
+io.emit('Timer:', { //pass timer broadcast here so the client receives the updated turn
+    raw: timer,
+    formatted: formatTimer(timer)
+});
 switch (match.turn){
      case "w":
-	io.emit("Timer:",{message:"White's turn"});
+	io.emit('Turn:',{turn:match.turn});
 	break;
      case "b":
-	io.emit("Timer:",{message:"Black's turn"});
+	io.emit('Turn:',{turn:match.turn});
 	break;
      }
-timer = .10;
+timer = 10;
 timerOnWhenPlayersJoin();
 
 
@@ -236,7 +255,10 @@ io.on('connection', (socket) => {
 }
   user.color = playerColor; //upon joining, players are automatically assigned colors (white if 1st, black if 2nd)
   users.set(socket.id, user);
-  timerOnWhenPlayersJoin(); //called when two players join match
+  
+  if (match.players.white && match.players.black && playerColor !== 'spectator') {
+    setTimeout(() => timerOnWhenPlayersJoin(), 50); //called when two players join match
+}
 
   socket.emit('init', {
     board: game.board,

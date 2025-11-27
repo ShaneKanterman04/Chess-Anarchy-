@@ -1,5 +1,4 @@
 
-
 (function () {
   const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
   const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
@@ -33,6 +32,8 @@
   const chatInput = document.getElementById('chat-input');
   const capturedWhiteEl = document.getElementById('captured-white');
   const capturedBlackEl = document.getElementById('captured-black');
+  const showTime = document.getElementById('showtime');
+  const showTurn = document.getElementById('showturn');
 
   const pieceLabels = {
     br: 'bR',
@@ -226,6 +227,28 @@
     selection = null;
   }
 }
+
+socket.on('Timer:', (data) => {
+
+	if (data.message) {
+         showTime.textContent = data.message;
+         return;
+        }
+
+	if (data.formatted !== undefined) {
+        showTime.textContent = data.formatted; // or whole seconds
+	}
+
+});
+
+socket.on('Turn:', data => {
+    if (data.turn === "w") {
+        showTurn.textContent = "White's turn";
+    } else if (data.turn === "b") {
+        showTurn.textContent = "Black's turn";
+    }
+});
+
   function renderBoard(board) {
     boardEl.innerHTML = '';
     const validMoves = selection ? getValidMoves(board, selection, board[selection.row][selection.col]) : [];

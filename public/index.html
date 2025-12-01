@@ -37,6 +37,17 @@
         <ul id="user-list" class="user-list"></ul>
       </section>
       <section class="side-section">
+	 <section class= "side-section timer-and-turn"> <!--Pete's code -->
+        <div class="info-box">
+    <span class="label">Timer:</span>
+    <span id="showtime" class="value"></span>
+        </div>
+
+       <div class="info-box">
+        <span class="label">Turn:</span>
+        <span id="showturn" class="value"></span>
+        </div>
+      </section>
         <h2>Captured Pieces</h2>
         <div class="captured-container">
           <div class="captured-group">
@@ -49,10 +60,13 @@
           </div>
         </div>
       </section>
-      <section class="side-section">
-        <h2>Moves</h2>
+     <section class="side-section">
+         <h2>Moves</h2>
+
         <ol id="move-log" class="move-log"></ol>
-      </section>
+     </section>
+
+
       <section class="side-section chat-section">
         <h2>Chat</h2>
         <div id="chat-log" class="chat-log"></div>

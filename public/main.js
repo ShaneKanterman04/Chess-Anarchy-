@@ -1,10 +1,13 @@
+
 (function () {
   const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
   const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
    
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
   const socket = io({ query: { name: requestedName, role } });
-     
+  window.addEventListener("beforeunload", () => {
+       socket.disconnect();
+   });     
   const state = {
     board: [],
     users: [],
@@ -29,6 +32,8 @@
   const chatInput = document.getElementById('chat-input');
   const capturedWhiteEl = document.getElementById('captured-white');
   const capturedBlackEl = document.getElementById('captured-black');
+  const showTime = document.getElementById('showtime');
+  const showTurn = document.getElementById('showturn');
 
   const pieceLabels = {
     br: 'bR',
@@ -222,6 +227,64 @@
     selection = null;
   }
 }
+
+// Peter's special socket listeners for the timer and turn events
+socket.on('Timer:', (data) => {
+
+	if (data.message) { //if there's no "Times up" message from the server, just show the timer
+         showTime.textContent = data.message;
+         return;
+        }
+
+	if (data.formatted !== undefined) {
+        showTime.textContent = data.formatted; 
+	}
+
+});
+
+socket.on('Turn:', data => {
+    if (data.turn === "w") {
+        showTurn.textContent = "White's turn";
+    } else if (data.turn === "b") {
+        showTurn.textContent = "Black's turn";
+    }
+});
+
+function renderTurn(turn) {
+  const turnBox = document.getElementById('turn-box');
+
+  if (!turnBox) return; // fail-safe
+
+  if (turn === 'w') {
+    turnBox.textContent = "White's turn";
+  } else if (turn === 'b') {
+    turnBox.textContent = "Black's turn";
+  } 
+}
+
+function formatTimer (totalSeconds) {
+  totalSeconds = Math.ceil(totalSeconds); //round up to integer
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  // Pad with leading zeros if necessary
+  const formattedMinutes = String(minutes).padStart(2, '0');
+  const formattedSeconds = String(seconds).padStart(2, '0');
+
+  return `${formattedMinutes}:${formattedSeconds}`;
+
+
+}
+
+function renderTimer(time) {
+  const timerBox = document.getElementById('timer-box');
+
+  if (!timerBox) return; // fail-safe
+
+  
+  timerBox.textContent = formatTimer(time);
+
+}
   function renderBoard(board) {
     boardEl.innerHTML = '';
     const validMoves = selection ? getValidMoves(board, selection, board[selection.row][selection.col]) : [];
@@ -383,13 +446,22 @@
     renderCapturedPieces();
   });
 
-  socket.on('reset', ({ board, chat, capturedWhite, capturedBlack }) => {
+  socket.on('reset', ({ board, chat, capturedWhite, capturedBlack, match, timer }) => {
     state.board = board || state.board;
     state.moves = [];
     state.chat = chat || [];
     state.capturedWhite = capturedWhite || [];
     state.capturedBlack = capturedBlack || [];
     selection = null;
+    if (match !== undefined) { 
+    state.turn = match;
+    renderTurn(state.turn);
+    }
+
+    if (timer !== undefined) {
+    state.timer = timer;
+    renderTimer(state.timer);
+    }
     renderBoard(state.board);
     updateMoveLog(state.moves);
     renderChat(state.chat);

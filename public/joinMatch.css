@@ -1,0 +1,40 @@
+body {
+	margin: 0;
+	background: #0f172a;
+	color: #f8fafc;
+	font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+	white-space: pre;
+}
+
+.heading {
+	padding-left: 20px;
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+h1 {
+	margin: 0;
+}
+
+
+.container {
+	float: flex;;
+	padding-left: 20px;
+	top: 20px;
+}
+
+a {
+	text-decoration: none;
+}
+
+:link {
+	color: #FFFFFF;
+}
+
+a:visited {
+	color: #FFFFFF; 
+}
+
+a:hover {
+	color: #A9A9A9;
+}

@@ -394,6 +394,8 @@
     updateMoveLog(state.moves);
     renderChat(state.chat);
     renderCapturedPieces();
+    document.getElementById('endGamePopUp').style.display = 'none';
+    document.getElementById('popUpContent').style.display = 'none';
   });
 
   socket.on('user-joined', (user) => {
@@ -416,5 +418,11 @@
     setTimeout(() => {
       setStatus('Connected');
     }, 3000);
+  });
+
+  socket.on('endGameHandler', (winner) => {
+    document.getElementById('winnerText').textContent = winner;
+    document.getElementById('endGamePopUp').style.display = 'block';
+    document.getElementById('popUpContent').style.display = 'block';
   });
 })();

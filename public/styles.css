@@ -7,6 +7,17 @@
   box-sizing: border-box;
 }
 
+.popUpOverlay {
+  z-index: 1000;
+  display: none;
+  margin-left: 25px;
+}
+
+.popUpContent {
+  z-index: 10001;
+  display: none;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -266,6 +277,14 @@ body {
   background: #4ade80;
 }
 
+<<<<<<< HEAD
+.popUpOverlay {
+display: none;
+position: absolute;
+z-index: 1000;
+top: 50%;
+left: 50%;
+=======
 .captured-container {
   display: flex;
   flex-direction: column;
@@ -298,6 +317,7 @@ body {
   border-radius: 0.25rem;
   font-weight: 700;
   font-size: 0.85rem;
+>>>>>>> main
 }
 
 @media (max-width: 960px) {

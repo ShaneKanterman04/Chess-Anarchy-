@@ -13,10 +13,16 @@
     <h1>Chess Anarchy — Multiplayer Board</h1>
     <div id="status" class="status">Connecting…</div>
   </header>
+  <div id="endGamePopUp" class="popUpOverlay">
+    <div id="popUpContent" class="popUpcontent">
+      <h2>Game Over</h2>
+      <p id="winnerText">Winner is ...</p>
+    </div>
+  </div>
   <main class="layout">
     <section class="board-panel">
       <div class="panel-header">
-	<span>Signed in as <strong id="user-name">anon</strong></span>
+        <span>Signed in as <strong id="user-name">anon</strong></span>
         <div class="actions">
           <button id="clear-selection" type="button">Clear selection</button>
           <button id="reset" type="button">Reset board</button>

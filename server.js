@@ -15,19 +15,18 @@ const db = mysql.createPool({
 db.query('SHOW TABLES;', function (error, results, fields) {
   if (error) {
     console.log(error);
-    db.end();
-    }
-  else {
-    console.log('Rows: ', results);
-    db.end();
+    return;
   }
+  console.log('Rows: ', results);
 });
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-
+/*const connection = db.getConnection();
+const [rows] = connection.execute('SHOW TABLES');
+connection.release()*/
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname,'public/pre-index.html'));
@@ -295,6 +294,19 @@ io.on('connection', (socket) => {
       chat: game.chat,
       capturedWhite: game.capturedWhite,
       capturedBlack: game.capturedBlack
+    });
+  });
+
+  socket.on('requestMatchData', () => {
+    db.query('SELECT * FROM gamematch;', function (error, results, fields) {
+      if (error) {
+        console.log(error);
+      }
+      else {
+        //JSON.stringify(results);
+        console.log('match data info: ', results);
+        socket.emit('matchDataRecieved', results)
+      }
     });
   });
 

@@ -15,7 +15,8 @@
     chat: [],
     capturedWhite: [],
     capturedBlack: [],
-    role
+    role,
+    color: null  // Will be set by server: 'w', 'b', or 'spectator'
   };
 
   let selection = null;
@@ -192,7 +193,8 @@
   }
 
   function handleCellClick(event, role) {
-   if (state.role == 'spectator'){
+   // Use server-assigned color, not URL role
+   if (state.color === 'spectator'){
  	return;  
    }
 	
@@ -332,6 +334,9 @@ function renderTimer(time) {
     }
   }
 
+  // Chat is disabled for players (white/black), enabled for spectators
+  // Note: This runs before init, so we check URL role first
+  // The server will confirm actual color assignment
   if (state.role == "player"){ 
     chatInput.disabled = true;
     chatInput.placeholder = 'chat disabled for players';
@@ -428,12 +433,32 @@ function renderTimer(time) {
     state.chat = payload.chat || [];
     state.capturedWhite = payload.capturedWhite || [];
     state.capturedBlack = payload.capturedBlack || [];
+    state.color = payload.color || 'spectator';  // Store assigned color from server
+    state.turn = payload.turn || 'w';
+    state.timer = payload.timer;
     selection = null;
     renderBoard(state.board);
     updateUsers(state.users);
     updateMoveLog(state.moves);
     renderChat(state.chat);
     renderCapturedPieces();
+    
+    // Render initial turn and timer from server
+    if (state.turn) {
+      renderTurn(state.turn);
+    }
+    if (state.timer !== undefined) {
+      renderTimer(state.timer);
+    }
+    
+    // Update status to show assigned color
+    if (state.color === 'w') {
+      setStatus('Connected - Playing as White');
+    } else if (state.color === 'b') {
+      setStatus('Connected - Playing as Black');
+    } else {
+      setStatus('Connected - Spectating');
+    }
   });
 
   socket.on('move', ({ board, move, capturedWhite, capturedBlack }) => {
@@ -466,6 +491,8 @@ function renderTimer(time) {
     updateMoveLog(state.moves);
     renderChat(state.chat);
     renderCapturedPieces();
+    document.getElementById('endGamePopUp').style.display = 'none';
+    document.getElementById('popUpContent').style.display = 'none';
   });
 
   socket.on('user-joined', (user) => {
@@ -488,5 +515,11 @@ function renderTimer(time) {
     setTimeout(() => {
       setStatus('Connected');
     }, 3000);
+  });
+
+  socket.on('endGameHandler', (winner) => {
+    document.getElementById('winnerText').textContent = winner;
+    document.getElementById('endGamePopUp').style.display = 'block';
+    document.getElementById('popUpContent').style.display = 'block';
   });
 })();

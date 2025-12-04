@@ -31,12 +31,26 @@ const match =  { //making match obj so we can actually have turns before putting
      turn: "w" //in classic rules white goes first
 };
 
-/*const connection = db.getConnection();
-const [rows] = connection.execute('SHOW TABLES');
-connection.release()*/
-
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname,'public/pre-index.html'));
+  res.sendFile(path.join(__dirname,'public/sign-up.html'));
+});
+
+app.get('/already_in', (req, res) => {
+
+ res.sendFile(path.join(__dirname,'public/login.html'));
+});
+
+app.post('/signup', (req,res) => {
+
+console.log("signed up!");
+res.sendFile(path.join(__dirname,'public','pre-index.html'));
+});
+
+app.post('/login', (req,res) => {
+
+console.log("logged in!");
+res.sendFile(path.join(__dirname,'public','pre-index.html'));
+
 });
 
 app.use(express.static('public'));

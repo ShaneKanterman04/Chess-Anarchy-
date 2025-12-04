@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="sign-up.css">
 </head>
 <body>
-    <form action = "../server.js" method= "POST" >
+    <form action = "/signup" method= "POST" >
 	<h2> Create a user account and jump in! </h2>
-	<button onclick="window.location.href=/login.html">already registered?</button>
+	<button type="button" onclick="window.location.href='/already_in'">already registered?</button>
 	
 	<label for= "user_ID">Username</label>
 	<input type="text" placeholder="enter username" name="user_ID">
@@ -17,7 +17,7 @@
 	<label for= "psw">Password</label>
 	<input type="password" placeholder="enter password" name="psw">
 	
-	<button type= "sign up">Sign up</button>
+	<button type= "submit">Sign up</button>
 	</form>
 
 	

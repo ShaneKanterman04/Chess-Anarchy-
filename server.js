@@ -247,7 +247,7 @@ function formatTimer (totalSeconds) {
 }
 let countdown = null;
 let timer = 10;
-let startTime = timer;
+let startTime = timer; //makes the timer work for some reason
 function timerOnWhenPlayersJoin(){
 if (countdown) clearInterval(countdown);
 if (match.players.white && match.players.black){ //activate when both colors aren't null (both players join)

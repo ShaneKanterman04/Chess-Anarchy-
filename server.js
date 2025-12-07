@@ -52,7 +52,7 @@ app.post('/signup', (req,res) => {
     };
     console.log('New user signed up: ', req.body.user_ID);
   });
-  res.sendFile(path.join(__dirname,'public','pre-index.html'));
+  res.redirect('/pre-index.html');
 });
 
 app.post('/login', (req,res) => {
@@ -65,7 +65,7 @@ app.post('/login', (req,res) => {
     }
     if (results.length > 0) {
       console.log('User: ', req.body.user_ID, 'logged in');
-      res.sendFile(path.join(__dirname,'public','pre-index.html'));
+      res.redirect('/pre-index.html');
     }
     else {
       console.log("Login error, info doesn't match");
@@ -547,3 +547,5 @@ const port = process.env.PORT || 3000;
 server.listen(port, () => {
   console.log(`chess server ready on port ${port}`);
 });
+
+module.exports = db;

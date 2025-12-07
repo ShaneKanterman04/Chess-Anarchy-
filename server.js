@@ -34,19 +34,6 @@ const match =  { //making match obj so we can actually have turns before putting
 
 
 
-
-app.post('/create-match', (req, res) => {
-  const { ruleset, timer } = req.body;
-  // Generate a random 1-char ID for Ruleset_ID to fit in varchar(1) columns
-  const possibleChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const rulesetId = possibleChars.charAt(Math.floor(Math.random() * possibleChars.length));
-
-  console.log(`Creating match with Ruleset: ${ruleset}, Timer: ${timer}, ID: ${rulesetId}`);
-
-  // 1. Insert Gamemode
-  const sqlGamemode = 'INSERT INTO gamemode (Ruleset_ID) VALUES (?)';
-  db.query(sqlGamemode, [rulesetId], (err) => {
-
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname,'public','sign-up.html'));
 });
@@ -60,6 +47,45 @@ app.post('/signup', (req,res) => {
   const sql = 'INSERT INTO user (user_ID, password) VALUES (?, ?)';
   const data = [req.body.user_ID,req.body.psw];
   db.query(sql, data, (err) => {
+    if (err) {
+      throw err;
+    };
+    console.log('New user signed up: ', req.body.user_ID);
+  });
+  res.sendFile(path.join(__dirname,'public','pre-index.html'));
+});
+
+app.post('/login', (req,res) => {
+  console.log(req.body);
+  const data = [req.body.user_ID, req.body.psw];
+  const sql = 'SELECT * FROM user WHERE user_ID = ? AND password = ?';
+  db.query(sql, data, function (err, results, fields) {
+    if (err) {
+	throw err;
+    }
+    if (results.length > 0) {
+      console.log('User: ', req.body.user_ID, 'logged in');
+      res.sendFile(path.join(__dirname,'public','pre-index.html'));
+    }
+    else {
+      console.log("Login error, info doesn't match");
+      res.sendFile(path.join(__dirname,'public','login.html'));
+    }
+  });
+});
+
+
+app.post('/create-match', (req, res) => {
+  const { ruleset, timer } = req.body;
+  // Generate a random 1-char ID for Ruleset_ID to fit in varchar(1) columns
+  const possibleChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const rulesetId = possibleChars.charAt(Math.floor(Math.random() * possibleChars.length));
+
+  console.log(`Creating match with Ruleset: ${ruleset}, Timer: ${timer}, ID: ${rulesetId}`);
+
+  // 1. Insert Gamemode
+  const sqlGamemode = 'INSERT INTO gamemode (Ruleset_ID) VALUES (?)';
+  db.query(sqlGamemode, [rulesetId], (err) => {
     if (err) {
       console.error('Error inserting gamemode:', err);
       // If duplicate entry, maybe try again or just fail for now
@@ -97,7 +123,6 @@ app.post('/signup', (req,res) => {
     });
   });
 });
-
 app.use(express.static('public'));
 const baseBoard = [
   ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
@@ -291,7 +316,12 @@ if (match.players.white && match.players.black){ //activate when both colors are
     io.emit('Timer:',{message: "Times up!"});
     clearInterval(countdown);
     timer = 10;
-    //code for win/stalemate cond
+    if (match.turn === "w") {
+	io.emit('endGameHandler', 'Black Wins');
+      }
+    else {
+	io.emit('endGameHandler', 'White Wins');
+      }
     return;
    }
   },1000);  
@@ -343,9 +373,8 @@ io.on('connection', (socket) => {
   user.color = playerColor; //upon joining, players are automatically assigned colors (white if 1st, black if 2nd)
   users.set(socket.id, user);
   
-  if (match.players.white && match.players.black && playerColor !== 'spectator') {
-    setTimeout(() => timerOnWhenPlayersJoin(), 50); //called when two players join match
-}
+  timerOnWhenPlayersJoin(); //called when two players join match
+
 
   socket.emit('init', {
     board: game.board,
@@ -411,12 +440,12 @@ io.on('connection', (socket) => {
       if (capturedPiece.startsWith('w')) {
         game.capturedWhite.push(capturedPiece);
         if (capturedPiece[1] == 'k') {
-          socket.emit('endGameHandler', 'Black Wins');
+          io.emit('endGameHandler', 'Black Wins');
         }
       } else if (capturedPiece.startsWith('b')) {
         game.capturedBlack.push(capturedPiece);
 	if (capturedPiece[1] == 'k') {
-          socket.emit('endGameHandler', 'White Wins');
+          io.emit('endGameHandler', 'White Wins');
         }
       }
     }
@@ -436,11 +465,11 @@ io.on('connection', (socket) => {
     game.moves.push(move);
 
     match.turn = match.turn === 'w' ? 'b' : 'w'; // after movement, if white moved, black can move, vice versa
-  if (timer > 0) {
+  if (timer > 0) { //start of match
     timerResetWhenPlayerMoves();  //call this when turn happens, and the timer's still going
     }
   else {
-    //pack it up bro you're not fast enough (end game)
+    io.emit('endGameHandler', 'Black Wins'); //assuming white moves first
     }
     io.emit('move', {
       board: game.board,

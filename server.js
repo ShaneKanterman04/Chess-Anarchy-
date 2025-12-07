@@ -73,6 +73,55 @@ app.post('/login', (req,res) => {
   });
 });
 
+app.post('/create-match', (req, res) => {
+  const { ruleset, timer } = req.body;
+  // Generate a random 1-char ID for Ruleset_ID to fit in varchar(1) columns
+  const possibleChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const rulesetId = possibleChars.charAt(Math.floor(Math.random() * possibleChars.length));
+
+  console.log(`Creating match with Ruleset: ${ruleset}, Timer: ${timer}, ID: ${rulesetId}`);
+
+  // 1. Insert Gamemode
+  const sqlGamemode = 'INSERT INTO gamemode (Ruleset_ID) VALUES (?)';
+  db.query(sqlGamemode, [rulesetId], (err) => {
+    if (err) {
+      console.error('Error inserting gamemode:', err);
+      // If duplicate entry, maybe try again or just fail for now
+      return res.send('Error creating match (ID collision), please try again.');
+    }
+
+    // 2. Insert Timer
+    const sqlTimer = 'INSERT INTO timers (duration_seconds, is_custom, name, Ruleset_ID) VALUES (?, ?, ?, ?)';
+    db.query(sqlTimer, [timer, 1, ruleset, rulesetId], (err) => {
+      if (err) {
+        console.error('Error inserting timer:', err);
+        return res.send('Error creating timer.');
+      }
+
+      // 3. Insert Match
+      // Using NULL for admin_ID, player1_ID, player2_ID for now
+      const sqlMatch = 'INSERT INTO gamematch (Ruleset_ID, admin_ID) VALUES (?, ?)';
+      db.query(sqlMatch, [rulesetId, null], (err, result) => {
+        if (err) {
+          console.error('Error inserting match:', err);
+          return res.send('Error creating match.');
+        }
+        const matchId = result.insertId;
+
+        // 4. Update Gamemode with match_ID
+        const sqlUpdateGamemode = 'UPDATE gamemode SET match_ID = ? WHERE Ruleset_ID = ?';
+        db.query(sqlUpdateGamemode, [matchId, rulesetId], (err) => {
+          if (err) {
+            console.error('Error updating gamemode:', err);
+          }
+          console.log('Match created:', matchId);
+          res.redirect('/index.html?role=admin');
+        });
+      });
+    });
+  });
+});
+
 app.use(express.static('public'));
 const baseBoard = [
   ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
@@ -298,10 +347,13 @@ timerOnWhenPlayersJoin();
 }
 io.on('connection', (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
+  const requestedRole = socket.handshake.query.role;
   const user = { id: socket.id, name: String(name), joinedAt: Date.now() };
   let playerColor;
 
-  if (!match.players.white) { //is white in players falsy (null, undefined, NaN, false, "") in the match obj? Assign that color to socket user 
+  if (requestedRole === 'spectator' || requestedRole === 'admin') {
+    playerColor = 'spectator';
+  } else if (!match.players.white) { //is white in players falsy (null, undefined, NaN, false, "") in the match obj? Assign that color to socket user 
    match.players.white = socket.id;
    playerColor = 'w';
 } else if (!match.players.black) { //give second player black if black is also falsy

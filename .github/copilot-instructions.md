@@ -1,104 +1,76 @@
 # Chess Anarchy – AI Coding Instructions
 
 ## Project Overview
-Chess Anarchy is a real-time multiplayer chess platform with role-based permissions (Admin, Player, Spectator). The app uses **Socket.IO for real-time sync** with no chess rule enforcement—it's "anarchy" by design. All game state lives in server memory (not persistent).
+Chess Anarchy is a real-time multiplayer chess platform. Despite the name, it now enforces **standard chess rules**, turn-based play, and timers. It uses **Node.js/Express/Socket.IO** for the backend and **MySQL** for user/match persistence.
 
 ## Architecture
 
 ### Server (`server.js`)
-- **Express + Socket.IO** server on port 3000
-- **In-memory state**: `game` object holds `board` (8×8 array), `moves[]`, and `chat[]`
-- **No validation**: moves are accepted as-is with basic bounds checking only
-- Users tracked in `users` Map by socket ID
-- Route `/` serves `public/pre-index.html` (role selection landing page)
+- **Express**: Serves static files and handles Auth (`/signup`, `/login`) via form POSTs.
+- **Socket.IO**: Handles real-time game state, chat, and match listing.
+- **MySQL**: Connects to Google Cloud SQL for `user` and `gamematch` tables.
+- **In-Memory State**:
+  - `game`: Holds `board` (8x8), `moves`, `chat`, `capturedWhite`, `capturedBlack`.
+  - `match`: Tracks `players` (white/black socket IDs) and `turn` ('w'/'b').
+  - `users`: Map of socket ID to user info.
 
-### Client (`public/main.js`)
-- **Role-based UI**: reads `?role=player` or `?role=spectator` from URL query params
-- **Player**: can click pieces to move, chat disabled
-- **Spectator**: read-only board view, chat enabled
-- Board rendered as 8×8 grid of `<button>` elements with `data-row` and `data-col` attributes
-- Two-click move pattern: select piece → select destination → emits `move` event
+### Client Structure
+- **Game UI**: `public/index.html` + `public/main.js` (Game board, chat).
+- **Auth**: `public/login.html`, `public/sign-up.html` (Form submissions).
+- **Match Listing**: `public/matchSearch.html` + `public/matches.js` (Socket.IO `requestMatchData`).
+- **Landing**: `public/pre-index.html` (Role selection).
 
-### Socket.IO Events
-| Event | Direction | Purpose |
-|-------|-----------|---------|
-| `init` | Server→Client | Initial state sync (board, users, moves, chat) |
-| `move` | Client→Server | Send move with `{from, to, piece}` |
-| `move` | Server→Clients | Broadcast updated board and move log |
-| `chat-message` | Both ways | Chat messages (spectators only) |
-| `reset` | Both ways | Clear board/chat, return to starting position |
-| `user-joined` / `user-left` | Server→Clients | User list updates |
+## Key Patterns & Conventions
 
-## Key Patterns
+### Game Logic & Validation
+- **Server-Side Validation**: `isValidMove()` in `server.js` enforces rules (geometry, path clearing, turn order).
+- **Turn Management**: `match.turn` toggles 'w'/'b'. Moves out of turn are rejected.
+- **Timer**: Server-side interval (`timerOnWhenPlayersJoin`) broadcasts `Timer:` events. Resets on valid move.
+- **Win Condition**: King capture triggers `endGameHandler`.
+
+### Data Flow
+- **Auth**: Standard HTTP POST to `/login` or `/signup`. Redirects to `pre-index.html` on success.
+- **Game Sync**:
+  - `init`: Sends full state on join.
+  - `move`: Broadcasts updates.
+  - `invalid-move`: Sent to sender if validation fails.
+  - `Timer:` / `Turn:`: Broadcasts time/turn updates.
+
+### Database
+- **Library**: `mysql2` with connection pooling.
+- **Credentials**: Hardcoded in `server.js` and `database.js` (Team5/Team05!!).
+- **Queries**: Raw SQL strings (e.g., `SELECT * FROM user...`).
 
 ### Piece Encoding
-- String codes: `'wp'` (white pawn), `'bk'` (black king), etc.
-- Format: `[color][type]` where color is `w`/`b` and type is `p`/r/n/b/q/k`
-- `pieceLabels` object in `main.js` maps codes to display strings like `'wP'`, `'bR'`
-
-### Board State Management
-- Server: `game.board` is 2D array (row-major, 0-indexed)
-- Client: local `state.board` synced via Socket.IO events
-- Move updates are **broadcast to all clients** immediately after mutating server board
-- No turn validation or move legality checks—"anarchy" chess
-
-### Role Differentiation
-- Determined by URL param: `index.html?role=player` vs `?role=spectator`
-- Players: `handleCellClick()` enabled, chat input disabled in `main.js` line 138
-- Spectators: board clicks ignored (early return in `handleCellClick`), chat enabled
-- Admin role planned but not yet implemented (see README future work)
+- Format: `[color][type]` (e.g., `'wp'`, `'bk'`).
+- Color: `w` (White), `b` (Black).
+- Type: `p` (Pawn), `r` (Rook), `n` (Knight), `b` (Bishop), `q` (Queen), `k` (King).
 
 ## Development Workflow
 
 ### Running Locally
 ```bash
 npm install
-npm start  # Starts server on http://localhost:3000
+npm start  # Server on http://localhost:3000
 ```
 
-### File Structure
-- `server.js` – Backend logic (Socket.IO + Express)
-- `public/pre-index.html` – Landing page with role selection buttons
-- `public/index.html` – Main game UI (board, chat, move log)
-- `public/main.js` – Client-side Socket.IO handling and DOM updates
-- `public/styles.css` – Dark mode chess UI with grid layout
-- No build step or transpilation required
+### Common Tasks
 
-### Testing Multi-User Flow
-1. Open `http://localhost:3000` in multiple browser tabs/windows
-2. Select different roles (player/spectator) on landing page
-3. Each connection gets unique socket ID and appears in "Users" sidebar
-4. Players can move pieces; spectators see moves in real-time
+**Adding a New Rule**
+1. Update `isValidMove` or specific piece validator (e.g., `isValidPawnMove`) in `server.js`.
+2. Ensure `invalid-move` event is emitted if rule is violated.
 
-## Common Tasks
+**Modifying Database**
+1. Use `db.query()` in `server.js`.
+2. Note: `database.js` exists but `server.js` initializes its own pool. Check which one is being used for the context.
 
-### Adding a New Socket Event
-1. Define handler in `server.js` inside `io.on('connection', ...)` block
-2. Add corresponding `socket.on()` listener in `public/main.js`
-3. Update `state` object and trigger relevant render function
-
-### Modifying Board Rendering
-- Edit `renderBoard()` in `main.js` (lines 72–93)
-- Board cells are `<button>` elements with `.light`/`.dark` classes for checkerboard
-- Selected piece highlighted with `.selected` class
-
-### Implementing Chess Rules
-- Add validation in server's `move` event handler before mutating `game.board`
-- Current code accepts any `from`/`to` coordinates if on board (lines 61–66 in `server.js`)
-- Consider tracking turn state and piece-specific move patterns
+**Debugging**
+- Server logs: `console.log` in `server.js` for auth/connection events.
+- Client logs: Browser console for Socket.IO events.
 
 ## Known Limitations
-- **No persistence**: restarting server clears all games
-- **No admin controls**: planned role not yet implemented
-- **Single game instance**: all users share one board (no rooms/sessions)
-- **No Supabase integration**: mentioned in README but not in code
-- **No move validation**: any piece can move anywhere (intentional for now)
-
-## Dependencies
-- `express` ^4.19.2 – HTTP server and static file serving
-- `socket.io` ^4.7.5 – Real-time bidirectional communication
-- No frontend frameworks or build tools
-
+- **Single Game Instance**: The server currently supports only **one active game** in memory (`game` object), shared by all connected users.
+- **Hardcoded Config**: DB credentials and IP are hardcoded.
 ## Styling Conventions
 - CSS variables in `:root` for theming (dark mode by default)
 - Grid layouts for board (8×8) and main layout (board + sidebar)

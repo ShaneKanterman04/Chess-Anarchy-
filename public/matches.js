@@ -25,12 +25,12 @@ socket.on('matchDataRecieved', (data) => {
 			player2ID = 'none';
 		}
 		let rules = data[key].Ruleset_ID;
-		switch (rules) {
-			default: //will add more rules once gamemodes added
-				rules = 'Regular Chess';
-		}
+		// switch (rules) {
+		// 	default: //will add more rules once gamemodes added
+		// 		rules = 'Regular Chess';
+		// }
 		newLine.textContent = 'match: ' + data[key].match_ID + indent + 'Admin: ' + data[key].admin_ID + indent + 'Player 1: '
-		 + player1ID + indent + 'Player 2: ' + player2ID, + indent + 'Gamemode: ' + rules;
+		 + player1ID + indent + 'Player 2: ' + player2ID + indent + 'Gamemode: ' + rules;
 		div.appendChild(newLine);
 	}
 });

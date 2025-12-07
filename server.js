@@ -32,9 +32,6 @@ const match =  { //making match obj so we can actually have turns before putting
      turn: "w" //in classic rules white goes first
 };
 
-<<<<<<< HEAD
-
-=======
 
 
 
@@ -49,6 +46,20 @@ app.post('/create-match', (req, res) => {
   // 1. Insert Gamemode
   const sqlGamemode = 'INSERT INTO gamemode (Ruleset_ID) VALUES (?)';
   db.query(sqlGamemode, [rulesetId], (err) => {
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname,'public','sign-up.html'));
+});
+
+app.get('/already_in', (req, res) => {
+  console.log("already in called");
+  res.sendFile(path.join(__dirname,'public','login.html'));
+});
+
+app.post('/signup', (req,res) => {
+  const sql = 'INSERT INTO user (user_ID, password) VALUES (?, ?)';
+  const data = [req.body.user_ID,req.body.psw];
+  db.query(sql, data, (err) => {
     if (err) {
       console.error('Error inserting gamemode:', err);
       // If duplicate entry, maybe try again or just fail for now
@@ -85,7 +96,6 @@ app.post('/create-match', (req, res) => {
       });
     });
   });
->>>>>>> main
 });
 
 app.use(express.static('public'));

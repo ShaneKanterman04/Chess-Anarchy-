@@ -21,6 +21,7 @@ db.query('SHOW TABLES;', function (error, results, fields) {
 });
 
 const app = express();
+app.use(express.urlencoded({ extended: true }));
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 const match =  { //making match obj so we can actually have turns before putting a time limit
@@ -31,12 +32,45 @@ const match =  { //making match obj so we can actually have turns before putting
      turn: "w" //in classic rules white goes first
 };
 
-/*const connection = db.getConnection();
-const [rows] = connection.execute('SHOW TABLES');
-connection.release()*/
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname,'public/pre-index.html'));
+  res.sendFile(path.join(__dirname,'public','sign-up.html'));
+});
+
+app.get('/already_in', (req, res) => {
+  console.log("already in called");
+  res.sendFile(path.join(__dirname,'public','login.html'));
+});
+
+app.post('/signup', (req,res) => {
+  const sql = 'INSERT INTO user (user_ID, password) VALUES (?, ?)';
+  const data = [req.body.user_ID,req.body.psw];
+  db.query(sql, data, (err) => {
+    if (err) {
+      throw err;
+    };
+    console.log('New user signed up: ', req.body.user_ID);
+  });
+  res.sendFile(path.join(__dirname,'public','pre-index.html'));
+});
+
+app.post('/login', (req,res) => {
+  console.log(req.body);
+  const data = [req.body.user_ID, req.body.psw];
+  const sql = 'SELECT * FROM user WHERE user_ID = ? AND password = ?';
+  db.query(sql, data, function (err, results, fields) {
+    if (err) {
+	throw err;
+    }
+    if (results.length > 0) {
+      console.log('User: ', req.body.user_ID, 'logged in');
+      res.sendFile(path.join(__dirname,'public','pre-index.html'));
+    }
+    else {
+      console.log("Login error, info doesn't match");
+      res.sendFile(path.join(__dirname,'public','login.html'));
+    }
+  });
 });
 
 app.use(express.static('public'));
@@ -431,7 +465,6 @@ io.on('connection', (socket) => {
         console.log(error);
       }
       else {
-        //JSON.stringify(results);
         console.log('match data info: ', results);
         socket.emit('matchDataRecieved', results)
       }

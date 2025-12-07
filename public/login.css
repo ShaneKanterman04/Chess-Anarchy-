@@ -84,3 +84,9 @@ form button:first-of-type {
 form button:first-of-type:hover {
     background-color: #1a1d24;
 }
+
+#errorMessage {
+    color: #FF0000;
+    display: none;
+    font-size: small;
+}

@@ -4,10 +4,34 @@ const { Server } = require('socket.io');
 const path = require('path');
 const mariadb = require('mariadb');
 
+const mysql = require('mysql2');
+const db = mysql.createPool({
+  host     : '34.74.157.230',
+  user     : 'Team5',
+  password : 'Team05!!',
+  database : 'chess',
+  connectionLimit : 10
+});
+
+db.query('SHOW TABLES;', function (error, results, fields) {
+  if (error) {
+    console.log(error);
+    return;
+  }
+  console.log('Rows: ', results);
+});
+
 const app = express();
+app.use(express.urlencoded({ extended: true }));
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
-
+const match =  { //making match obj so we can actually have turns before putting a time limit
+     players: {
+       white: null,
+       black: null
+     },	
+     turn: "w" //in classic rules white goes first
+};
 
 //The connection to MariaDB
 const pool = mariadb.createPool({
@@ -82,6 +106,7 @@ function getPieceColor(piece) {
 function getPieceType(piece) {
   return piece ? piece[1] : null;
 }
+
 
 function isPathClear(board, from, to) {
   const rowDiff = to.row - from.row;
@@ -171,15 +196,24 @@ app.get('/', (req, res) => {
 });
 app.use(express.static('public'));
 
+
+}
 io.on('connection', (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
   const user = { id: socket.id, name, joinedAt: Date.now() };
   users.set(socket.id, user);
+  
+  if (match.players.white && match.players.black && playerColor !== 'spectator') {
+    setTimeout(() => timerOnWhenPlayersJoin(), 50); //called when two players join match
+}
 
   socket.emit('init', {
     board: game.board,
     users: Array.from(users.values()),
     moves: game.moves,
+    color: playerColor,
+    timer: timer,
+    turn: match.turn,
     chat: game.chat,
     capturedWhite: game.capturedWhite,
     capturedBlack: game.capturedBlack
@@ -221,6 +255,13 @@ io.on('connection', (socket) => {
     };
     game.moves.push(move);
 
+    match.turn = match.turn === 'w' ? 'b' : 'w'; // after movement, if white moved, black can move, vice versa
+  if (timer > 0) {
+    timerResetWhenPlayerMoves();  //call this when turn happens, and the timer's still going
+    }
+  else {
+    //pack it up bro you're not fast enough (end game)
+    }
     io.emit('move', {
       board: game.board,
       move,
@@ -228,6 +269,7 @@ io.on('connection', (socket) => {
       capturedBlack: game.capturedBlack
     });
   });
+
 
   socket.on('chat-message', (payload = {}) => {
     const text = typeof payload.text === 'string' ? payload.text.trim() : '';
@@ -255,11 +297,34 @@ io.on('connection', (socket) => {
       board: game.board,
       chat: game.chat,
       capturedWhite: game.capturedWhite,
-      capturedBlack: game.capturedBlack
+      capturedBlack: game.capturedBlack,
+      match: match.turn,
+      timer: timer
+    });
+  });
+
+  socket.on('requestMatchData', () => {
+    db.query('SELECT * FROM gamematch;', function (error, results, fields) {
+      if (error) {
+        console.log(error);
+      }
+      else {
+        console.log('match data info: ', results);
+        socket.emit('matchDataRecieved', results)
+      }
     });
   });
 
   socket.on('disconnect', () => {
+  if (match.players.white === socket.id) { //if either player leaves they lose their color
+    match.players.white = null;
+    console.log("White player disconnected, slot freed");
+  }
+
+  if (match.players.black === socket.id) {
+    match.players.black = null;
+    console.log("Black player disconnected, slot freed");
+  }
     users.delete(socket.id);
     io.emit('user-left', user.id);
   });

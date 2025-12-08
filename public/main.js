@@ -1,10 +1,13 @@
+
 (function () {
   const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
   const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
    
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
   const socket = io({ query: { name: requestedName, role } });
-     
+  window.addEventListener("beforeunload", () => {
+       socket.disconnect();
+   });     
   const state = {
     board: [],
     users: [],
@@ -12,7 +15,8 @@
     chat: [],
     capturedWhite: [],
     capturedBlack: [],
-    role
+    role,
+    color: null  // Will be set by server: 'w', 'b', or 'spectator'
   };
 
   let selection = null;
@@ -29,6 +33,8 @@
   const chatInput = document.getElementById('chat-input');
   const capturedWhiteEl = document.getElementById('captured-white');
   const capturedBlackEl = document.getElementById('captured-black');
+  const showTime = document.getElementById('showtime');
+  const showTurn = document.getElementById('showturn');
 
   const pieceLabels = {
     br: 'bR',
@@ -187,7 +193,8 @@
   }
 
   function handleCellClick(event, role) {
-   if (state.role == 'spectator'){
+   // Use server-assigned color, not URL role
+   if (state.color === 'spectator'){
  	return;  
    }
 	
@@ -221,6 +228,64 @@
     });
     selection = null;
   }
+}
+
+// Peter's special socket listeners for the timer and turn events
+socket.on('Timer:', (data) => {
+
+	if (data.message) { //if there's no "Times up" message from the server, just show the timer
+         showTime.textContent = data.message;
+         return;
+        }
+
+	if (data.formatted !== undefined) {
+        showTime.textContent = data.formatted; 
+	}
+
+});
+
+socket.on('Turn:', data => {
+    if (data.turn === "w") {
+        showTurn.textContent = "White's turn";
+    } else if (data.turn === "b") {
+        showTurn.textContent = "Black's turn";
+    }
+});
+
+function renderTurn(turn) {
+  const turnBox = document.getElementById('turn-box');
+
+  if (!turnBox) return; // fail-safe
+
+  if (turn === 'w') {
+    turnBox.textContent = "White's turn";
+  } else if (turn === 'b') {
+    turnBox.textContent = "Black's turn";
+  } 
+}
+
+function formatTimer (totalSeconds) {
+  totalSeconds = Math.ceil(totalSeconds); //round up to integer
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  // Pad with leading zeros if necessary
+  const formattedMinutes = String(minutes).padStart(2, '0');
+  const formattedSeconds = String(seconds).padStart(2, '0');
+
+  return `${formattedMinutes}:${formattedSeconds}`;
+
+
+}
+
+function renderTimer(time) {
+  const timerBox = document.getElementById('timer-box');
+
+  if (!timerBox) return; // fail-safe
+
+  
+  timerBox.textContent = formatTimer(time);
+
 }
   function renderBoard(board) {
     boardEl.innerHTML = '';
@@ -269,6 +334,9 @@
     }
   }
 
+  // Chat is disabled for players (white/black), enabled for spectators
+  // Note: This runs before init, so we check URL role first
+  // The server will confirm actual color assignment
   if (state.role == "player"){ 
     chatInput.disabled = true;
     chatInput.placeholder = 'chat disabled for players';
@@ -365,12 +433,32 @@
     state.chat = payload.chat || [];
     state.capturedWhite = payload.capturedWhite || [];
     state.capturedBlack = payload.capturedBlack || [];
+    state.color = payload.color || 'spectator';  // Store assigned color from server
+    state.turn = payload.turn || 'w';
+    state.timer = payload.timer;
     selection = null;
     renderBoard(state.board);
     updateUsers(state.users);
     updateMoveLog(state.moves);
     renderChat(state.chat);
     renderCapturedPieces();
+    
+    // Render initial turn and timer from server
+    if (state.turn) {
+      renderTurn(state.turn);
+    }
+    if (state.timer !== undefined) {
+      renderTimer(state.timer);
+    }
+    
+    // Update status to show assigned color
+    if (state.color === 'w') {
+      setStatus('Connected - Playing as White');
+    } else if (state.color === 'b') {
+      setStatus('Connected - Playing as Black');
+    } else {
+      setStatus('Connected - Spectating');
+    }
   });
 
   socket.on('move', ({ board, move, capturedWhite, capturedBlack }) => {
@@ -383,17 +471,28 @@
     renderCapturedPieces();
   });
 
-  socket.on('reset', ({ board, chat, capturedWhite, capturedBlack }) => {
+  socket.on('reset', ({ board, chat, capturedWhite, capturedBlack, match, timer }) => {
     state.board = board || state.board;
     state.moves = [];
     state.chat = chat || [];
     state.capturedWhite = capturedWhite || [];
     state.capturedBlack = capturedBlack || [];
     selection = null;
+    if (match !== undefined) { 
+    state.turn = match;
+    renderTurn(state.turn);
+    }
+
+    if (timer !== undefined) {
+    state.timer = timer;
+    renderTimer(state.timer);
+    }
     renderBoard(state.board);
     updateMoveLog(state.moves);
     renderChat(state.chat);
     renderCapturedPieces();
+    document.getElementById('endGamePopUp').style.display = 'none';
+    document.getElementById('popUpContent').style.display = 'none';
   });
 
   socket.on('user-joined', (user) => {
@@ -416,5 +515,11 @@
     setTimeout(() => {
       setStatus('Connected');
     }, 3000);
+  });
+
+  socket.on('endGameHandler', (winner) => {
+    document.getElementById('winnerText').textContent = winner;
+    document.getElementById('endGamePopUp').style.display = 'block';
+    document.getElementById('popUpContent').style.display = 'block';
   });
 })();

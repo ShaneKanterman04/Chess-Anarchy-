@@ -25,6 +25,7 @@ h1 {
 
 a {
 	text-decoration: none;
+	margin-left: 20px;
 }
 
 :link {
@@ -37,4 +38,8 @@ a:visited {
 
 a:hover {
 	color: #A9A9A9;
+}
+
+#matchID {
+	padding-left: 20px;
 }

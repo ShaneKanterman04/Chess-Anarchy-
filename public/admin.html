@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Create Match</title>
+    <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="startup.css">
     <style>
         .form-group {
@@ -53,15 +54,13 @@
             </div>
             <div class="buttons">
                 <div class="admin">
-                    <button type="submit">Create Match</button>
+                    <button type="submit" class="btn btn-primary btn-block">Create Match</button>
                 </div>
             </div>
         </form>
-        <div style="margin-top: 20px;">
-            <button onclick="window.location.href='/admin-rules.html'">Create Custom Rules</button>
-        </div>
-        <div style="margin-top: 20px;">
-            <button onclick="window.location.href='/'">Back</button>
+        <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn btn-secondary btn-block" onclick="window.location.href='/admin-rules.html'">Create Custom Rules</button>
+            <button class="btn btn-secondary btn-block" onclick="window.location.href='/'">Back</button>
         </div>
     </div>
 </div>

@@ -1,8 +1,7 @@
 body {
 	margin: 0;
-	background: #0f172a;
-	color: #f8fafc;
-	font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+	background: var(--bg-primary);
+	color: var(--text-primary);
 	white-space: pre;
 }
 
@@ -26,12 +25,12 @@ h1 {
 
 .match-card {
 	display: block;
-	background: #1e293b;
-	border-radius: 12px;
+	background: var(--bg-secondary);
+	border-radius: var(--radius-lg);
 	padding: 20px;
 	transition: transform 0.2s, box-shadow 0.2s;
-	border: 1px solid #334155;
-	color: #f8fafc;
+	border: 1px solid var(--border-color);
+	color: var(--text-primary);
 	text-decoration: none;
 }
 
@@ -44,8 +43,8 @@ h1 {
 
 .match-card h3 {
 	margin-top: 0;
-	color: #38bdf8;
-	border-bottom: 1px solid #334155;
+	color: var(--accent-primary);
+	border-bottom: 1px solid var(--border-color);
 	padding-bottom: 10px;
 	margin-bottom: 15px;
 	font-size: 1.25rem;
@@ -53,19 +52,19 @@ h1 {
 
 .match-details p {
 	margin: 8px 0;
-	color: #94a3b8;
+	color: var(--text-muted);
 	font-size: 0.95rem;
 }
 
 .match-details strong {
-	color: #e2e8f0;
+	color: var(--text-secondary);
 }
 
 .players {
 	margin-top: 15px;
-	background: #0f172a;
+	background: var(--bg-primary);
 	padding: 12px;
-	border-radius: 8px;
+	border-radius: var(--radius-md);
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -74,11 +73,11 @@ h1 {
 }
 
 .player-white {
-	color: #e2e8f0;
+	color: var(--text-secondary);
 }
 
 .player-black {
-	color: #94a3b8;
+	color: var(--text-muted);
 }
 
 .vs {

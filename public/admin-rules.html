@@ -4,10 +4,15 @@
 <meta charset="UTF-8">
 <title>Chess Anarchy | Piece Creation Page</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <style>
-    body { padding: 30px; background-color: lightgrey; }
-    h2 { margin-bottom: 25px; }
-    table input { width: 60px; }
+    body { padding: 30px; background-color: var(--bg-primary); color: var(--text-primary); }
+    h2 { margin-bottom: 25px; color: var(--text-primary); }
+    table input { width: 60px; background-color: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); }
+    .table { color: var(--text-primary); }
+    .table-striped>tbody>tr:nth-of-type(odd)>* { color: var(--text-primary); background-color: var(--bg-secondary); }
+    .table-striped>tbody>tr:nth-of-type(even)>* { color: var(--text-primary); background-color: var(--bg-primary); }
+    .table-bordered>:not(caption)>*>* { border-color: var(--border-color); }
 </style>
 </head>
 

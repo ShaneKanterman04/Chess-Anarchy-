@@ -1,6 +1,5 @@
 :root {
   color-scheme: light dark;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 * {
@@ -23,18 +22,18 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #0f172a;
-  color: #f8fafc;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .top-bar {
   padding: 1rem 1.5rem;
-  background: #1e293b;
+  background: var(--bg-secondary);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 1rem;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .top-bar h1 {

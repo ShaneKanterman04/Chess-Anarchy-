@@ -2,7 +2,7 @@
 (function () {
   const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
   const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
-   
+  const user = params.get('user');
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
   const socket = io({ query: { name: requestedName, role } });
   window.addEventListener("beforeunload", () => {
@@ -16,6 +16,7 @@
     capturedWhite: [],
     capturedBlack: [],
     role,
+    user,
     color: null  // Will be set by server: 'w', 'b', or 'spectator'
   };
 
@@ -498,6 +499,21 @@ function renderTimer(time) {
   socket.on('user-joined', (user) => {
     state.users = state.users.filter((existing) => existing.id !== user.id).concat(user);
     updateUsers(state.users);
+    //socket.emit('userInMatch', 'works'); //emit not working nor fetch request
+    /*fetch('/userInMatch', {
+        method:'post',
+        headers: {
+	  'Content-type':'application/json'
+        },
+        body: JSON.stringify(state.user)
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log(data.message);
+    })
+    .catch(error => {
+      console.error('Error calling server function:', error);
+    });*/ 
   });
 
   socket.on('user-left', (userId) => {

@@ -12,14 +12,6 @@ const db = mysql.createPool({
   connectionLimit : 10
 });
 
-db.query('SHOW TABLES;', function (error, results, fields) {
-  if (error) {
-    console.log(error);
-    return;
-  }
-  console.log('Rows: ', results);
-});
-
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 const server = http.createServer(app);
@@ -37,8 +29,11 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname,'public','sign-up.html'));
 });
 
+/*app.post('userInMatch', (req, res) => {
+  console.log(req.body);
+});*/ //post for ajax call if working
+
 app.get('/already_in', (req, res) => {
-  console.log("already in called");
   res.sendFile(path.join(__dirname,'public','login.html'));
 });
 
@@ -51,11 +46,10 @@ app.post('/signup', (req,res) => {
     };
     console.log('New user signed up: ', req.body.user_ID);
   });
-  res.sendFile(path.join(__dirname,'public','pre-index.html'));
+  res.redirect(`/pre-index.html?user=${req.body.user_ID}`);
 });
 
 app.post('/login', (req,res) => {
-  console.log(req.body);
   const data = [req.body.user_ID, req.body.psw];
   const sql = 'SELECT * FROM user WHERE user_ID = ? AND password = ?';
   db.query(sql, data, function (err, results, fields) {
@@ -64,7 +58,7 @@ app.post('/login', (req,res) => {
     }
     if (results.length > 0) {
       console.log('User: ', req.body.user_ID, 'logged in');
-      res.sendFile(path.join(__dirname,'public','pre-index.html'));
+      res.redirect(`/pre-index.html?user=${req.body.user_ID}`);
     }
     else {
       console.log("Login error, info doesn't match");
@@ -517,11 +511,24 @@ io.on('connection', (socket) => {
         console.log(error);
       }
       else {
-        console.log('match data info: ', results);
         socket.emit('matchDataRecieved', results)
       }
     });
   });
+
+  socket.on('userInMatch', function (data,err) { // socket not called, disconnect form socket error happening
+    console.log('user in match called' + data);
+    if (err) {
+	throw err;
+	}
+    });/* beginning of query check if called
+    sqlCheck = 'SELECT player1_ID, player2_ID FROM gamematch WHERE match_ID = ?;';
+    db.query(sqlCheck, data, function (err, results, fields) {
+      if (err) {
+        throw err;
+      }
+    });
+    const sql = 'UPDATE gamematch SET name = ?, email = ? WHERE id = ?';*/
 
   socket.on('disconnect', () => {
   if (match.players.white === socket.id) { //if either player leaves they lose their color

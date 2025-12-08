@@ -1,8 +1,7 @@
 
 body {
-    background-color: #0d0f14; 
-    color: #e0e0e0;
-    font-family: Arial, sans-serif;
+    background-color: var(--bg-primary); 
+    color: var(--text-primary);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -12,10 +11,10 @@ body {
 
 
 form {
-    background-color: #161920;
+    background-color: var(--bg-secondary);
     padding: 2rem;
-    border-radius: 10px;
-    border: 2px solid #1f2633; 
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color); 
     width: 300px;
     display: flex;
     flex-direction: column;
@@ -26,7 +25,7 @@ form {
 form h2 {
     margin-top: 0;
     text-align: center;
-    color: #c6d4ff; 
+    color: var(--text-primary); 
 }
 
 
@@ -36,44 +35,4 @@ label {
 }
 
 
-input[type="text"],
-input[type="password"] {
-    padding: 0.5rem;
-    border-radius: 6px;
-    border: 1px solid #2a3242;
-    background-color: #0f1117;
-    color: #e0e0e0;
-}
-
-input:focus {
-    outline: none;
-    border-color: #4c6aff; 
-	
-}
-
-
-button {
-    padding: 0.6rem;
-    border-radius: 6px;
-    border: none;
-    cursor: pointer;
-    font-weight: bold;
-    background-color: #4c6aff;
-    color: white;
-    transition: background-color 0.2s ease;
-}
-
-button:hover {
-    background-color: #3953d4;
-}
-
-
-form button:first-of-type {
-    background: none;
-    border: 1px solid #2a3242;
-    color: #b9c7ff;
-}
-
-form button:first-of-type:hover {
-    background-color: #1c2230;
-}
+/* Input and Button styles removed - using theme.css */

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Create Match</title>
+    <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="startup.css">
     <style>
         .form-group {
@@ -42,7 +43,10 @@
         <form action="/create-match" method="POST">
             <div class="form-group">
                 <label for="ruleset">Ruleset Name:</label>
-                <input type="text" id="ruleset" name="ruleset" value="Standard" required>
+                <select id="ruleset" name="ruleset" required>
+                    <option value="" disabled selected>Select a ruleset</option>
+                    <!-- Options will be populated by JavaScript -->
+                </select>
             </div>
             <div class="form-group">
                 <label for="timer">Timer (seconds):</label>
@@ -50,15 +54,42 @@
             </div>
             <div class="buttons">
                 <div class="admin">
-                    <button type="submit">Create Match</button>
+                    <button type="submit" class="btn btn-primary btn-block">Create Match</button>
                 </div>
             </div>
         </form>
-        <div style="margin-top: 20px;">
-            <button onclick="window.location.href='/'">Back</button>
+        <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn btn-secondary btn-block" onclick="window.location.href='/admin-rules.html'">Create Custom Rules</button>
+            <button class="btn btn-secondary btn-block" onclick="window.location.href='/'">Back</button>
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const rulesetSelect = document.getElementById('ruleset');
+        try {
+            const response = await fetch('/api/rulesets');
+            if (!response.ok) throw new Error('Failed to fetch rulesets');
+            const rulesets = await response.json();
+            
+            rulesets.forEach(ruleset => {
+                const option = document.createElement('option');
+                option.value = ruleset.Ruleset_ID;
+                option.textContent = ruleset.Ruleset_ID;
+                if (ruleset.Ruleset_ID === 'C') {
+                    option.selected = true;
+                }
+                rulesetSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading rulesets:', error);
+            const option = document.createElement('option');
+            option.textContent = 'Error loading rulesets';
+            rulesetSelect.appendChild(option);
+        }
+    });
+</script>
 
 </body>
 </html>

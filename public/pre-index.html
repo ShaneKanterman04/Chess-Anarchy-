@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome to Chess Anarchy!</title>
+    <link rel="stylesheet" href="theme.css">
     <link rel="stylesheet" href="startup.css">
     <script defer src="pre-index.js"></script>
 	
@@ -16,9 +17,10 @@
 <div class = "subheader"><p> game, or watch? </p></div>
 
 <div class = "buttons"> 
-<div class = "player"> <button onclick="play_user()">player</button> </div> <!-- so i can configure these w/o touching the grid-->
-<div class = "spectator"> <button onclick="spec_user()">spectator</button> </div>
-<div class = "admin"><button onclick="admin_user()">admin</button> </div> <!-- Wire player and spectator to match search, wire admin to create match -->
+<div class = "player"> <button class="btn btn-primary" onclick= "play_user()">Player</button> </div> <!-- so i can configure these w/o touching the grid-->
+<div class = "spectator"> <button class="btn btn-secondary" onclick= "spec_user()">Spectator</button> </div>
+<div class = "admin"><button class="btn btn-secondary" onclick= "admin_user()">Admin</button> </div> <!-- Wire player and spectator to match search, wire admin to create match -->
+<div class = "rules"><button class="btn btn-secondary" onclick= "rules_page()">Create Rules</button> </div>
 </div>
  
 </div>

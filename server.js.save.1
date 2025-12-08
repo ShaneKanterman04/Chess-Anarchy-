@@ -2,29 +2,57 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const mariadb = require('mariadb');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
-const mysql = require('mysql2');
 
-const connectionObject = {
-  host : '34.74.157.230',
-  user : 'Team5',
+//The connection to MariaDB
+const pool = mariadb.createPool({
+  host: '34.74.157.230',
+  user: 'Team5',
   password: 'Team05!!',
   database: 'chess',
-  connectionLimit: '10'
-
+  connectionLimit: 5
 });
 
-chess_db.query("INSERT INTO User (user_ID) VALUES ")
+const RULESET_ID = 'C';
+let movementCache = {};
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname,'public/pre-index.html'));
-});
 
-app.use(express.static('public')); 
+//loading in the gamemode and piec movements
+async function loadMovementRules() {
+  let conn;
+  try {
+    conn = await pool.getConnection(); //grabs the database
+    const rows = await conn.query(
+      'SELECT piece_type, horizontal, vertical, diagonal FROM rules  WHERE Ruleset_ID = ?',
+      [RULESET_ID]
+    );
+    movementCache = {};
+    rows.forEach(row => {
+      movementCache[row.piece_type] = {
+        horizontal: row.horizontal,
+        vertical: row.vertical,
+        diagonal: row.diagonal
+      }; //adds piece rules to cache
+    });
+    console.log('Movement rules loaded:', movementCache); //prints the movement rules
+  } finally {
+    if (conn) conn.release();
+  }
+}
+
+function getPieceMovement(pieceType) {
+  return movementCache[pieceType] || null;
+}
+
+// Load rules at startup
+loadMovementRules().catch(err => console.error('Failed to load movement rules:', err));
+
+
 const baseBoard = [
   ['br', 'bn', 'bb', 'bq', 'bk', 'bb', 'bn', 'br'],
   ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
@@ -36,6 +64,92 @@ const baseBoard = [
   ['wr', 'wn', 'wb', 'wq', 'wk', 'wb', 'wn', 'wr']
 ];
 
+function freshBoard() {
+  return baseBoard.map(row => row.slice());
+}
+
+function isOnBoard(value) {
+  return Number.isInteger(value) && value >= 0 && value < 8;
+}
+
+function getPieceColor(piece) {
+  return piece ? piece[0] : null;
+}
+
+function getPieceType(piece) {
+  return piece ? piece[1] : null;
+}
+
+function isPathClear(board, from, to) {
+  const rowDiff = to.row - from.row;
+  const colDiff = to.col - from.col;
+  const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
+  const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
+
+  let r = from.row + rowStep;
+  let c = from.col + colStep;
+
+  while (r !== to.row || c !== to.col) {
+    if (board[r][c] !== null) return false;
+    r += rowStep;
+    c += colStep;
+  }
+  return true;
+}
+
+async function isValidMoveDB(board, from, to, piece) {
+  if (!piece) return false;
+
+  const color = getPieceColor(piece);
+  const typeMap = { p: 'Pawn', r: 'Rook', n: 'Knight', b: 'Bishop', q: 'Queen', k: 'King' };
+  const type = typeMap[getPieceType(piece)];
+  const moveData = await getPieceMovement(type);
+  if (!moveData) return false;
+
+  const rowDiff = to.row - from.row;
+  const colDiff = to.col - from.col;
+  const target = board[to.row][to.col];
+
+   if (target && target[0] === color) return false;
+
+   if (type === 'Pawn') {
+   const direction = color === 'w' ? -1 : 1;
+   const startRow = color === 'w' ? 6 : 1;
+
+    if (colDiff === 0 && rowDiff === direction && !target) return true;
+    
+    if (colDiff === 0 && rowDiff === 2 * direction && from.row === startRow &&
+        !target && !board[from.row + direction][from.col]) return true;
+
+    if (Math.abs(colDiff) === 1 && rowDiff === direction && target && target[0] !== color) return true;
+
+    return false;
+  }
+
+  if (type === 'Knight') {
+    return (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 1) ||
+           (Math.abs(rowDiff) === 1 && Math.abs(colDiff) === 2);
+  }
+
+  if (type === 'King') {
+    return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
+  }
+
+  if (rowDiff === 0 && Math.abs(colDiff) <= moveData.horizontal) {
+    return isPathClear(board, from, to);
+  }
+
+  if (colDiff === 0 && Math.abs(rowDiff) <= moveData.vertical) {
+    return isPathClear(board, from, to);
+  }
+
+  if (Math.abs(rowDiff) === Math.abs(colDiff) && Math.abs(rowDiff) <= moveData.diagonal) {
+    return isPathClear(board, from, to);
+  }
+
+  return false;
+}
+
 const users = new Map();
 const game = {
   board: freshBoard(),
@@ -45,153 +159,14 @@ const game = {
   capturedBlack: []
 };
 
-function freshBoard() {
-  return baseBoard.map((row) => row.slice());
-}
-
-function isOnBoard(value) {
-  return Number.isInteger(value) && value >= 0 && value < 8;
-}
-
-// Move validation functions
-function getPieceColor(piece) {
-  if (!piece) return null;
-  return piece[0]; // 'w' or 'b'
-}
-
-function getPieceType(piece) {
-  if (!piece) return null;
-  return piece[1]; // 'p', 'r', 'n', 'b', 'q', 'k'
-}
-
-function isPathClear(board, from, to) {
-  const rowDiff = to.row - from.row;
-  const colDiff = to.col - from.col;
-  const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
-  const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
-  
-  let currentRow = from.row + rowStep;
-  let currentCol = from.col + colStep;
-  
-  while (currentRow !== to.row || currentCol !== to.col) {
-    if (board[currentRow][currentCol] !== null) {
-      return false;
-    }
-    currentRow += rowStep;
-    currentCol += colStep;
-  }
-  return true;
-}
-
-function getRule(ruleSetID, pieceType) {
-
-
-const chess_db = mysql.createPool(ConnectionObj); //call this every time, then make query for movement change
-chess_db.query("SELECT FROM RULES WHERE")
-};
-
-
-function isValidPawnMove(board, from, to, piece) {
-  const color = getPieceColor(piece);
-  const direction = color === 'w' ? -1 : 1; // white moves up (decreasing row), black moves down
-  const startRow = color === 'w' ? 6 : 1;
-  const rowDiff = to.row - from.row;
-  const colDiff = Math.abs(to.col - from.col);
-  const targetPiece = board[to.row][to.col];
-  let ruleSet = getRuleSet(matchID);
-  let rule = getRule(ruleSet,'P');
-  // Move forward one square
-  if (colDiff === 0 && rowDiff === direction && !targetPiece) {
-    return true;
-  }
-  
-  // Move forward two squares from starting position
-  if (colDiff === 0 && rowDiff === 2 * direction && from.row === startRow && !targetPiece) {
-    const middleRow = from.row + direction;
-    if (!board[middleRow][from.col]) {
-      return true;
-    }
-  }
-  
-  // Capture diagonally
-  if (colDiff === 1 && rowDiff === direction && targetPiece && getPieceColor(targetPiece) !== color) {
-    return true;
-  }
-  
-  return false;
-}
-
-function isValidRookMove(board, from, to) {
-  const rowDiff = Math.abs(to.row - from.row);
-  const colDiff = Math.abs(to.col - from.col);
-  
-  // Must move in straight line (horizontal or vertical)
-  if (rowDiff !== 0 && colDiff !== 0) return false;
-  
-  return isPathClear(board, from, to);
-}
-
-function isValidKnightMove(from, to) {
-  const rowDiff = Math.abs(to.row - from.row);
-  const colDiff = Math.abs(to.col - from.col);
-  
-  // L-shape: 2 in one direction, 1 in the other
-  return (rowDiff === 2 && colDiff === 1) || (rowDiff === 1 && colDiff === 2);
-}
-
-function isValidBishopMove(board, from, to) {
-  const rowDiff = Math.abs(to.row - from.row);
-  const colDiff = Math.abs(to.col - from.col);
-  
-  // Must move diagonally
-  if (rowDiff !== colDiff) return false;
-  
-  return isPathClear(board, from, to);
-}
-
-function isValidQueenMove(board, from, to) {
-  // Queen moves like rook or bishop
-  return isValidRookMove(board, from, to) || isValidBishopMove(board, from, to);
-}
-
-function isValidKingMove(from, to) {
-  const rowDiff = Math.abs(to.row - from.row);
-  const colDiff = Math.abs(to.col - from.col);
-  
-  // King moves one square in any direction
-  return rowDiff <= 1 && colDiff <= 1;
-}
-
-function isValidMove(board, from, to, piece) {
-  // Can't move to same square
-  if (from.row === to.row && from.col === to.col) return false;
-  
-  const pieceType = getPieceType(piece);
-  const pieceColor = getPieceColor(piece);
-  const targetPiece = board[to.row][to.col];
-  
-  // Can't capture your own piece
-  if (targetPiece && getPieceColor(targetPiece) === pieceColor) {
-    return false;
-  }
-  
-  // Check piece-specific rules
-  switch (pieceType) {
-    case 'p': return isValidPawnMove(board, from, to, piece);
-    case 'r': return isValidRookMove(board, from, to);
-    case 'n': return isValidKnightMove(from, to);
-    case 'b': return isValidBishopMove(board, from, to);
-    case 'q': return isValidQueenMove(board, from, to);
-    case 'k': return isValidKingMove(from, to);
-    default: return false;
-  }
-}
-
-
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/pre-index.html'));
+});
+app.use(express.static('public'));
 
 io.on('connection', (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
-  const user = { id: socket.id, name: String(name), joinedAt: Date.now() };
+  const user = { id: socket.id, name, joinedAt: Date.now() };
   users.set(socket.id, user);
 
   socket.emit('init', {
@@ -205,37 +180,28 @@ io.on('connection', (socket) => {
 
   socket.broadcast.emit('user-joined', user);
 
-  socket.on('move', (payload = {}) => {
+  socket.on('move', async (payload = {}) => {
     const from = payload.from;
     const to = payload.to;
-    if (!from || !to) return;
-    if (!isOnBoard(from.row) || !isOnBoard(from.col)) return;
-    if (!isOnBoard(to.row) || !isOnBoard(to.col)) return;
-
     const piece = payload.piece || game.board[from.row][from.col];
-    if (!piece) return;
 
-    // Validate the move
-    if (!isValidMove(game.board, from, to, piece)) {
-      socket.emit('invalid-move', {
-        message: 'Invalid move for this piece',
-        from,
-        to,
-        piece
-      });
+    if (!from || !to || !piece) return;
+    if (!isOnBoard(from.row) || !isOnBoard(from.col) || !isOnBoard(to.row) || !isOnBoard(to.col)) return;
+
+    const valid = await isValidMoveDB(game.board, from, to, piece);
+    if (!valid) {
+      socket.emit('invalid-move', { message: 'Invalid move for this piece', from, to, piece });
       return;
     }
 
-    // Check if a piece is being captured
     const capturedPiece = game.board[to.row][to.col];
     if (capturedPiece) {
-      // Add to appropriate captured list based on piece color
-      if (capturedPiece.startsWith('w')) {
-        game.capturedWhite.push(capturedPiece);
-      } else if (capturedPiece.startsWith('b')) {
-        game.capturedBlack.push(capturedPiece);
-      }
+      if (capturedPiece.startsWith('w')) game.capturedWhite.push(capturedPiece);
+      else game.capturedBlack.push(capturedPiece);
     }
+
+    game.board[to.row][to.col] = piece;
+    game.board[from.row][from.col] = null;
 
     const move = {
       userId: user.id,
@@ -246,9 +212,6 @@ io.on('connection', (socket) => {
       capturedPiece: capturedPiece || null,
       timestamp: Date.now()
     };
-
-    game.board[to.row][to.col] = piece;
-    game.board[from.row][from.col] = null;
     game.moves.push(move);
 
     io.emit('move', {
@@ -270,10 +233,8 @@ io.on('connection', (socket) => {
       text,
       timestamp: Date.now()
     };
-
     game.chat.push(message);
     if (game.chat.length > 200) game.chat.shift();
-
     io.emit('chat-message', message);
   });
 
@@ -283,8 +244,8 @@ io.on('connection', (socket) => {
     game.chat = [];
     game.capturedWhite = [];
     game.capturedBlack = [];
-    io.emit('reset', { 
-      board: game.board, 
+    io.emit('reset', {
+      board: game.board,
       chat: game.chat,
       capturedWhite: game.capturedWhite,
       capturedBlack: game.capturedBlack
@@ -299,5 +260,5 @@ io.on('connection', (socket) => {
 
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
-  console.log(`chess server ready on port ${port}`);
+  console.log(`Chess server ready on port ${port}`);
 });

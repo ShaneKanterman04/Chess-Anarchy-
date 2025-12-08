@@ -1,13 +1,8 @@
 body {
   margin: 0;
-  
-  background: #0f172a;
-  color: #f8fafc;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
-
-
-
 
 .container {
 	display: grid;
@@ -22,18 +17,16 @@ body {
 	
 	transform: translateY(150px); 
 	
-	
-	
-	  background: #1e293b; 
-	  border: 1px solid #334155;
-	  border-radius: 1rem;
+	  background: var(--bg-secondary); 
+	  border: 1px solid var(--border-color);
+	  border-radius: var(--radius-lg);
 	  padding: 3rem 4rem;
 	  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
 
 
 .container p {
-  color: #cbd5f5;
+  color: var(--text-secondary);
   font-size: 1rem;
   margin-bottom: 2rem;
 }
@@ -45,59 +38,4 @@ body {
   justify-content: center;
 }
 
-.player button {
-  
-  background-color: #0f172a;
-  color: #f8fafc;
-  border: none;
-  border-radius: 8px;
-  padding: 0.7rem 1.3rem;
-  cursor: pointer;
-  font-size: 1rem;
-  font-family: inherit;
-}
-
-.player button:hover {background-color: #646a79}
-
-.player button:active {
-	background-color: #646a79;
-  transform: translateY(4px);
-}
-
-.spectator button {
-	background-color: #0f172a;
-  color: #f8fafc;
-  border: none;
-  border-radius: 8px;
-  padding: 0.7rem 1.3rem;
-  cursor: pointer;
-  font-size: 1rem;
-  font-family: inherit;
-
-}
-
-.spectator button:hover {background-color: #646a79}
-
-.spectator button:active {
-	background-color: #646a79;
-  transform: translateY(4px);
-}
-
-
-.admin button {
-	background-color: #B59410;
-  color: #f8fafc;
-  border: none;
-  border-radius: 8px;
-  padding: 0.7rem 1.3rem;
-  cursor: pointer;
-  font-size: 1rem;
-  font-family: inherit;
-}
-
-.admin button:hover{ background-color: #DAC677;}
-
-.admin button:active {
-	background-color: #DAC677;
-  transform: translateY(4px);
-}
+/* Button styles removed - using theme.css .btn classes */

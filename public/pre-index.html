@@ -18,6 +18,7 @@
 <div class = "player"> <button onclick= "play_user()">player</button> </div> <!-- so i can configure these w/o touching the grid-->
 <div class = "spectator"> <button onclick= "spec_user()">spectator</button> </div>
 <div class = "admin"><button onclick= "admin_user()">admin</button> </div> <!-- Wire player and spectator to match search, wire admin to create match -->
+<div class = "rules"><button onclick= "rules_page()">create rules</button> </div>
 </div>
  
 </div>
@@ -33,6 +34,10 @@ function spec_user(){
 
 function admin_user(){
       window.location.href = "admin.html";
+}
+
+function rules_page(){
+      window.location.href = "admin-rules.html";
 }
 
 

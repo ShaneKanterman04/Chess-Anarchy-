@@ -23,6 +23,7 @@ db.query('SHOW TABLES;', function (error, results, fields) {
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
+app.use(express.json()); // Ensure JSON body parsing is enabled
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 const match =  { //making match obj so we can actually have turns before putting a time limit
@@ -42,42 +43,48 @@ const pool = mariadb.createPool({
   connectionLimit: 5
 });
 
-
+const RULESET_ID = 'C';
 
 
 let movementCache = {};
 
 
 //loading in the gamemode and piec movements
-async function loadMovementRules() {
+async function loadMovementRules(rulesetID) {
   let conn;
   try {
     conn = await pool.getConnection(); //grabs the database
     const rows = await conn.query(
       'SELECT piece_type, horizontal, vertical, diagonal FROM rules  WHERE Ruleset_ID = ?',
-      [RULESET_ID]
+      [rulesetID]
     );
-    movementCache = {};
+    
+    // Initialize cache for this ruleset if it doesn't exist
+    if (!movementCache[rulesetID]) {
+      movementCache[rulesetID] = {};
+    }
+
     rows.forEach(row => {
-      movementCache[row.piece_type] = {
+      movementCache[rulesetID][row.piece_type] = {
         horizontal: row.horizontal,
         vertical: row.vertical,
         diagonal: row.diagonal
       }; //adds piece rules to cache
     });
-    console.log('Movement rules loaded:', movementCache); //prints the movement rules
+    console.log(`Movement rules loaded for ruleset ${rulesetID}:`, movementCache[rulesetID]); //prints the movement rules
   } finally {
     if (conn) conn.release();
   }
 }
 
 //grabbing the piece type
-function getPieceMovement(pieceType) {
-  return movementCache[pieceType] || null;
+function getPieceMovement(pieceType, rulesetID) {
+  if (!movementCache[rulesetID]) return null;
+  return movementCache[rulesetID][pieceType] || null;
 }
 
-// Load rules at startup
-loadMovementRules().catch(err => console.error('Failed to load movement rules:', err));
+// Load rules at startup - removed as we load on demand now
+// loadMovementRules().catch(err => console.error('Failed to load movement rules:', err));
 
 
 const baseBoard = [
@@ -126,13 +133,13 @@ function isPathClear(board, from, to) {
 }
 
 //new db movement code
-async function isValidMoveDB(board, from, to, piece) {
+async function isValidMoveDB(board, from, to, piece, rulesetID) {
   if (!piece) return false;
 
   const color = getPieceColor(piece);
   const typeMap = { p: 'Pawn', r: 'Rook', n: 'Knight', b: 'Bishop', q: 'Queen', k: 'King' };
   const type = typeMap[getPieceType(piece)];
-  const moveData = await getPieceMovement(type);
+  const moveData = await getPieceMovement(type, rulesetID);
   if (!moveData) return false;
 
   const rowDiff = to.row - from.row;
@@ -191,16 +198,191 @@ const game = {
   capturedBlack: []
 };
 
+app.post('/admin/saveRuleset', async (req, res) => {
+  const { ruleset_id, rules } = req.body;
+
+  if (!ruleset_id || !rules || !Array.isArray(rules)) {
+    return res.status(400).json({ message: 'Invalid request data' });
+  }
+
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    
+    // Check if ruleset already exists in gamemode
+    const existing = await conn.query('SELECT Ruleset_ID FROM gamemode WHERE Ruleset_ID = ?', [ruleset_id]);
+    if (existing.length > 0) {
+        // If it exists, we might want to update or error. For now, let's error to be safe or delete old rules.
+        // Let's delete old rules for this ruleset first to allow overwrite
+        await conn.query('DELETE FROM rules WHERE Ruleset_ID = ?', [ruleset_id]);
+    } else {
+        // Insert into gamemode first
+        await conn.query('INSERT INTO gamemode (Ruleset_ID) VALUES (?)', [ruleset_id]);
+    }
+
+    // Insert new rules
+    for (const rule of rules) {
+      await conn.query(
+        'INSERT INTO rules (Ruleset_ID, piece_type, horizontal, vertical, diagonal) VALUES (?, ?, ?, ?, ?)',
+        [ruleset_id, rule.piece_type, rule.horizontal, rule.vertical, rule.diagonal]
+      );
+    }
+
+    res.json({ message: `Ruleset ${ruleset_id} saved successfully!` });
+  } catch (err) {
+    console.error('Error saving ruleset:', err);
+    res.status(500).json({ message: 'Database error saving ruleset' });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.post('/create-match', (req, res) => {
+  const { ruleset, timer } = req.body;
+  
+  // Basic validation
+  if (!ruleset) {
+    return res.status(400).send('Ruleset is required');
+  }
+
+  // Insert into database
+  // Note: We are currently ignoring 'timer' as it is not in the schema
+  // We are also setting admin_ID, player1_ID, player2_ID to NULL for now
+  const query = 'INSERT INTO gamematch (Ruleset_ID) VALUES (?)';
+  
+  db.query(query, [ruleset], (error, results) => {
+    if (error) {
+      console.error('Error creating match:', error);
+      return res.status(500).send('Error creating match');
+    }
+    
+    console.log('Match created with ID:', results.insertId);
+    // Redirect back to admin page or match list
+    res.redirect('/matchSearch.html');
+  });
+});
+
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/pre-index.html'));
 });
 app.use(express.static('public'));
 
+function formatTimer (totalSeconds) {
+  totalSeconds = Math.ceil(totalSeconds); //round up to integer
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  
+  // Pad with leading zeros if necessary
+  const formattedMinutes = String(minutes).padStart(2, '0');
+  const formattedSeconds = String(seconds).padStart(2, '0');
 
+  return `${formattedMinutes}:${formattedSeconds}`;
 }
-io.on('connection', (socket) => {
+
+let countdown = null;
+let timer = 600;
+let startTime = timer;
+
+function timerOnWhenPlayersJoin(){
+if (countdown) clearInterval(countdown);
+if (match.players.white && match.players.black){ //activate when both colors aren't null (both players join)
+
+    countdown = setInterval(() => {
+      timer -= 1;
+
+      io.emit('Timer:',{raw: timer, formatted: formatTimer(timer)});
+   if (!match.players.white || !match.players.black) { //if either player leaves, stop timer
+        timer = startTime;
+        clearInterval(countdown);
+     } 	
+
+   if (timer <= 0) {
+    timer = 0;
+    io.emit('Timer:',{message: "Times up!"});
+    clearInterval(countdown);
+    timer = startTime;
+    //code for win/stalemate cond
+    return;
+   }
+  },1000);  
+ }
+}
+
+function timerResetWhenPlayerMoves (){
+io.emit('Turn:', { turn: match.turn }); 
+
+io.emit('Timer:', { //pass timer broadcast here so the client receives the updated turn
+    raw: timer,
+    formatted: formatTimer(timer)
+});
+switch (match.turn){
+     case "w":
+	io.emit('Turn:',{turn:match.turn});
+	break;
+     case "b":
+	io.emit('Turn:',{turn:match.turn});
+	break;
+     }
+timer = startTime;
+timerOnWhenPlayersJoin();
+}
+
+io.on('connection', async (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
-  const user = { id: socket.id, name, joinedAt: Date.now() };
+  const requestedRole = socket.handshake.query.role;
+  const matchID = socket.handshake.query.matchID;
+  
+  const user = { id: socket.id, name: String(name), joinedAt: Date.now(), matchID: matchID };
+  let playerColor;
+
+  // Load ruleset for this match if provided
+  if (matchID) {
+    try {
+      const conn = await pool.getConnection();
+      const rows = await conn.query('SELECT Ruleset_ID FROM gamematch WHERE match_ID = ?', [matchID]);
+      conn.release();
+      
+      if (rows.length > 0) {
+        const rulesetID = rows[0].Ruleset_ID;
+        user.rulesetID = rulesetID;
+        
+        // Load rules if not already cached
+        if (!movementCache[rulesetID]) {
+          await loadMovementRules(rulesetID);
+        }
+        
+        // If this is the first player or we are setting up the match, store the ruleset ID in the match object
+        // Note: This is a simplification for the single-match architecture. 
+        // Ideally, 'match' should be keyed by matchID.
+        if (!match.rulesetID) {
+            match.rulesetID = rulesetID;
+        }
+      }
+    } catch (err) {
+      console.error('Error loading match rules:', err);
+    }
+  } else {
+      // Fallback to default 'C' if no matchID provided (legacy support)
+      user.rulesetID = 'C';
+      if (!movementCache['C']) {
+          await loadMovementRules('C');
+      }
+      if (!match.rulesetID) match.rulesetID = 'C';
+  }
+
+  if (requestedRole === 'spectator' || requestedRole === 'admin') {
+    playerColor = 'spectator';
+  } else if (!match.players.white) { 
+   match.players.white = socket.id;
+   playerColor = 'w';
+  } else if (!match.players.black) { 
+   match.players.black = socket.id;
+   playerColor = 'b';
+  } else {
+    playerColor = 'spectator'; 
+  }
+
+  user.color = playerColor;
   users.set(socket.id, user);
   
   if (match.players.white && match.players.black && playerColor !== 'spectator') {
@@ -229,7 +411,9 @@ io.on('connection', (socket) => {
     if (!from || !to || !piece) return;
     if (!isOnBoard(from.row) || !isOnBoard(from.col) || !isOnBoard(to.row) || !isOnBoard(to.col)) return;
 
-    const valid = await isValidMoveDB(game.board, from, to, piece);
+    // Use the ruleset ID from the user or the match
+    const rulesetID = user.rulesetID || match.rulesetID || 'C';
+    const valid = await isValidMoveDB(game.board, from, to, piece, rulesetID);
     if (!valid) {
       socket.emit('invalid-move', { message: 'Invalid move for this piece', from, to, piece });
       return;

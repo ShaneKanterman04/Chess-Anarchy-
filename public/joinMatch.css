@@ -18,9 +18,74 @@ h1 {
 
 
 .container {
-	float: flex;;
-	padding-left: 20px;
-	top: 20px;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+	gap: 20px;
+	padding: 20px;
+}
+
+.match-card {
+	display: block;
+	background: #1e293b;
+	border-radius: 12px;
+	padding: 20px;
+	transition: transform 0.2s, box-shadow 0.2s;
+	border: 1px solid #334155;
+	color: #f8fafc;
+	text-decoration: none;
+}
+
+.match-card:hover {
+	transform: translateY(-4px);
+	box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+	background: #263346;
+	color: #fff;
+}
+
+.match-card h3 {
+	margin-top: 0;
+	color: #38bdf8;
+	border-bottom: 1px solid #334155;
+	padding-bottom: 10px;
+	margin-bottom: 15px;
+	font-size: 1.25rem;
+}
+
+.match-details p {
+	margin: 8px 0;
+	color: #94a3b8;
+	font-size: 0.95rem;
+}
+
+.match-details strong {
+	color: #e2e8f0;
+}
+
+.players {
+	margin-top: 15px;
+	background: #0f172a;
+	padding: 12px;
+	border-radius: 8px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-weight: 500;
+	font-size: 0.9rem;
+}
+
+.player-white {
+	color: #e2e8f0;
+}
+
+.player-black {
+	color: #94a3b8;
+}
+
+.vs {
+	color: #64748b;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	font-weight: bold;
 }
 
 a {

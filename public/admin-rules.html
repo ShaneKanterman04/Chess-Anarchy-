@@ -1,7 +1,5 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
 <meta charset="UTF-8">
 <title>Chess Anarchy | Piece Creation Page</title>
@@ -13,9 +11,6 @@
 </style>
 </head>
 
-
-
-
 <body>
 <div class="container">
     <h2 class="align-middle text-center">Admin: Piece Creation Page</h2>
@@ -26,11 +21,10 @@
         - Movement values must be between <strong>0–7</strong>.
     </div>
 
-
-    //the table
+    <!-- the table -->
     <table class="table table-bordered table-striped align-middle text-center">
 
-	//top row
+        <!-- top row -->
         <thead class="table-dark">
             <tr>
                 <th>Piece</th>
@@ -40,7 +34,7 @@
             </tr>
         </thead>
 
-	//the tables columns and rows
+        <!-- the tables columns and rows -->
         <tbody id="piecesTable">
             <tr>
                 <td>Pawn</td>
@@ -81,10 +75,6 @@
         </tbody>
     </table>
 
-
-
-
-
     <div class="mb-3 row">
         <label>Ruleset Name:</label>
         <div class="col-sm-3">
@@ -93,8 +83,8 @@
     </div>
 
     <button class="btn btn-primary" onclick="saveRuleset()">Save Ruleset</button>
+    <button class="btn btn-secondary" onclick="window.location.href='/admin.html'">Back to Admin</button>
 </div>
-
 
 <script>
 async function saveRuleset() {
@@ -106,7 +96,7 @@ async function saveRuleset() {
         return;
     }
     
-    \\Can only be a single letter
+    // Can only be a single letter
     if (!letter.match(/^[A-Z]$/)) {
         alert("Enter a single letter (A-Z) for the ruleset!");
         return;
@@ -117,7 +107,7 @@ async function saveRuleset() {
 
     const rules = rows.map(row => {
 
-	//Update db
+        // Update db
         const horizontal = parseInt(row.cells[1].querySelector('input').value);
         const vertical = parseInt(row.cells[2].querySelector('input').value);
         const diagonal = parseInt(row.cells[3].querySelector('input').value);
@@ -143,9 +133,6 @@ async function saveRuleset() {
         alert(err.message);
     }
 }
-
-
 </script>
 </body>
 </html>
-

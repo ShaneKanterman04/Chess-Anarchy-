@@ -102,7 +102,7 @@ async function saveRuleset() {
         return;
     }
 
-    const table = document.getElementById('piecesTable').getElementsByTagName('tbody')[0];
+    const table = document.getElementById('piecesTable');
     const rows = Array.from(table.rows);
 
     const rules = rows.map(row => {
@@ -111,13 +111,14 @@ async function saveRuleset() {
         const horizontal = parseInt(row.cells[1].querySelector('input').value);
         const vertical = parseInt(row.cells[2].querySelector('input').value);
         const diagonal = parseInt(row.cells[3].querySelector('input').value);
+        const pieceType = row.cells[0].innerText.trim();
 
         // Validate range 0-7
         if ([horizontal, vertical, diagonal].some(v => v < 0 || v > 7)) {
-            throw new Error(`Invalid values for ${row.cells[0].innerText}. Movement values must be 0–7.`);
+            throw new Error(`Invalid values for ${pieceType}. Movement values must be 0–7.`);
         }
 
-        return { piece_type: row.cells[0].innerText, horizontal, vertical, diagonal };
+        return { piece_type: pieceType, horizontal, vertical, diagonal };
     });
 
     try {

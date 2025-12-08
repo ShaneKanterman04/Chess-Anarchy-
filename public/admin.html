@@ -42,7 +42,10 @@
         <form action="/create-match" method="POST">
             <div class="form-group">
                 <label for="ruleset">Ruleset Name:</label>
-                <input type="text" id="ruleset" name="ruleset" value="C" required>
+                <select id="ruleset" name="ruleset" required>
+                    <option value="" disabled selected>Select a ruleset</option>
+                    <!-- Options will be populated by JavaScript -->
+                </select>
             </div>
             <div class="form-group">
                 <label for="timer">Timer (seconds):</label>
@@ -62,6 +65,32 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const rulesetSelect = document.getElementById('ruleset');
+        try {
+            const response = await fetch('/api/rulesets');
+            if (!response.ok) throw new Error('Failed to fetch rulesets');
+            const rulesets = await response.json();
+            
+            rulesets.forEach(ruleset => {
+                const option = document.createElement('option');
+                option.value = ruleset.Ruleset_ID;
+                option.textContent = ruleset.Ruleset_ID;
+                if (ruleset.Ruleset_ID === 'C') {
+                    option.selected = true;
+                }
+                rulesetSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading rulesets:', error);
+            const option = document.createElement('option');
+            option.textContent = 'Error loading rulesets';
+            rulesetSelect.appendChild(option);
+        }
+    });
+</script>
 
 </body>
 </html>

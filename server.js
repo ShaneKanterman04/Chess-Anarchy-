@@ -43,7 +43,7 @@ const pool = mariadb.createPool({
   connectionLimit: 5
 });
 
-const RULESET_ID = 'C';
+
 
 
 let movementCache = {};
@@ -232,6 +232,20 @@ app.post('/admin/saveRuleset', async (req, res) => {
   } catch (err) {
     console.error('Error saving ruleset:', err);
     res.status(500).json({ message: 'Database error saving ruleset' });
+  } finally {
+    if (conn) conn.release();
+  }
+});
+
+app.get('/api/rulesets', async (req, res) => {
+  let conn;
+  try {
+    conn = await pool.getConnection();
+    const rows = await conn.query('SELECT Ruleset_ID FROM gamemode');
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching rulesets:', err);
+    res.status(500).json({ message: 'Error fetching rulesets' });
   } finally {
     if (conn) conn.release();
   }

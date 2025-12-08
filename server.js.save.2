@@ -18,13 +18,15 @@ const pool = mariadb.createPool({
   connectionLimit: 5
 });
 
-const RULESET_ID = 'C';
-let movement_cache = {};
+;
+let movementCache = {};
 
+
+//loading in the gamemode and piec movements
 async function loadMovementRules() {
   let conn;
   try {
-    conn = await pool.getConnection();
+    conn = await pool.getConnection(); //grabs the database
     const rows = await conn.query(
       'SELECT piece_type, horizontal, vertical, diagonal FROM rules  WHERE Ruleset_ID = ?',
       [RULESET_ID]
@@ -35,15 +37,16 @@ async function loadMovementRules() {
         horizontal: row.horizontal,
         vertical: row.vertical,
         diagonal: row.diagonal
-      };
+      }; //adds piece rules to cache
     });
-    console.log('Movement rules loaded:', movementCache);
+    console.log('Movement rules loaded:', movementCache); //prints the movement rules
   } finally {
     if (conn) conn.release();
   }
 }
 
-async function getPieceMovement(pieceType) {
+//grabbing the piece type
+function getPieceMovement(pieceType) {
   return movementCache[pieceType] || null;
 }
 
@@ -84,17 +87,18 @@ function isPathClear(board, from, to) {
   const rowStep = rowDiff === 0 ? 0 : rowDiff / Math.abs(rowDiff);
   const colStep = colDiff === 0 ? 0 : colDiff / Math.abs(colDiff);
 
-  let r = from.row + rowStep;
-  let c = from.col + colStep;
+  let currentRow = from.row + rowStep;
+  let currentCol = from.col + colStep;
 
-  while (r !== to.row || c !== to.col) {
-    if (board[r][c] !== null) return false;
-    r += rowStep;
-    c += colStep;
+  while (currentRow !== to.row || currentCol !== to.col) {
+    if (board[currentRow][currentCol] !== null) return false;
+    currentRow += rowStep;
+    currentCol += colStep;
   }
   return true;
 }
 
+//new db movement code
 async function isValidMoveDB(board, from, to, piece) {
   if (!piece) return false;
 
@@ -109,6 +113,9 @@ async function isValidMoveDB(board, from, to, piece) {
   const target = board[to.row][to.col];
 
    if (target && target[0] === color) return false;
+	
+
+   //piece logic
 
    if (type === 'Pawn') {
    const direction = color === 'w' ? -1 : 1;
@@ -179,30 +186,23 @@ io.on('connection', (socket) => {
   socket.broadcast.emit('user-joined', user);
 
   socket.on('move', async (payload = {}) => {
-    const from = payload.from; //starting spot
-    const to = payload.to; //destination spot
-    const piece = payload.piece || game.board[from.row][from.col]; //the piece being moved
+    const from = payload.from;
+    const to = payload.to;
+    const piece = payload.piece || game.board[from.row][from.col];
 
-    //checks for valid movement
     if (!from || !to || !piece) return;
     if (!isOnBoard(from.row) || !isOnBoard(from.col) || !isOnBoard(to.row) || !isOnBoard(to.col)) return;
 
-    //validate move in the database
     const valid = await isValidMoveDB(game.board, from, to, piece);
     if (!valid) {
       socket.emit('invalid-move', { message: 'Invalid move for this piece', from, to, piece });
       return;
     }
 
-    // Check if a piece is being captured
     const capturedPiece = game.board[to.row][to.col];
     if (capturedPiece) {
-      // Add to appropriate captured list based on piece color
-      if (capturedPiece.startsWith('w')) {
-        game.capturedWhite.push(capturedPiece);
-      } else if (capturedPiece.startsWith('b')) {
-        game.capturedBlack.push(capturedPiece);
-      }
+      if (capturedPiece.startsWith('w')) game.capturedWhite.push(capturedPiece);
+      else game.capturedBlack.push(capturedPiece);
     }
 
     game.board[to.row][to.col] = piece;

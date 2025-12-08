@@ -1,3 +1,6 @@
+<<<<<<< HEAD
+# Chess-Anarchy-
+=======
 # ♟️ Chess Anarchy
 
 ### CSC 330 — Software Design and Development  
@@ -118,3 +121,4 @@ For questions or contributions:
 **Team Members:** Ivory • Shane • Oscar • Peter  
 
 ---
+>>>>>>> 470aca7b68207ca025688d2d9bd32b7ed97d59e0

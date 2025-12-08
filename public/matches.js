@@ -9,28 +9,48 @@ socket.on('matchDataRecieved', (data) => {
 	const query = new URLSearchParams(window.location.search);
 	const role = query.get('role');
 	for (let key in data) {
-		const newLine = document.createElement('a');
+		const card = document.createElement('a');
+		card.className = 'match-card';
+		
 		if (role == 'player') {
-			newLine.href = '/index.html?role=player';
+			card.href = '/index.html?role=player&matchID=' + data[key].match_ID;
 		}
 		else {
-			newLine.href = '/index.html?role=spectator';
+			card.href = '/index.html?role=spectator&matchID=' + data[key].match_ID;
 		}
+
 		let player1ID = data[key].player1_ID;
 		let player2ID = data[key].player2_ID;
 		if (player1ID == null) {
-			player1ID = 'none';
+			player1ID = 'Open';
 		}
 		if (player2ID == null) {
-			player2ID = 'none';
+			player2ID = 'Open';
 		}
 		let rules = data[key].Ruleset_ID;
 		// switch (rules) {
 		// 	default: //will add more rules once gamemodes added
 		// 		rules = 'Regular Chess';
 		// }
-		newLine.textContent = 'match: ' + data[key].match_ID + indent + 'Admin: ' + data[key].admin_ID + indent + 'Player 1: '
-		 + player1ID + indent + 'Player 2: ' + player2ID + indent + 'Gamemode: ' + rules;
-		div.appendChild(newLine);
+
+		const title = document.createElement('h3');
+		title.textContent = `Match #${data[key].match_ID}`;
+		
+		const details = document.createElement('div');
+		details.className = 'match-details';
+		
+		details.innerHTML = `
+			<p><strong>Admin:</strong> ${data[key].admin_ID}</p>
+			<p><strong>Gamemode:</strong> ${rules}</p>
+			<div class="players">
+				<span class="player-white">⚪ ${player1ID}</span>
+				<span class="vs">vs</span>
+				<span class="player-black">⚫ ${player2ID}</span>
+			</div>
+		`;
+
+		card.appendChild(title);
+		card.appendChild(details);
+		div.appendChild(card);
 	}
 });

@@ -2,9 +2,10 @@
 (function () {
   const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
   const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
+  const matchID = params.get('matchID');
    
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
-  const socket = io({ query: { name: requestedName, role } });
+  const socket = io({ query: { name: requestedName, role, matchID } });
   window.addEventListener("beforeunload", () => {
        socket.disconnect();
    });     

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<title>Chess Anarchy | Piece Creation Page</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+    body { padding: 30px; background-color: lightgrey; }
+    h2 { margin-bottom: 25px; }
+    table input { width: 60px; }
+</style>
+</head>
+
+
+
+
+<body>
+<div class="container">
+    <h2 class="align-middle text-center">Admin: Piece Creation Page</h2>
+
+    <div class="alert alert-primary align-middle text-center">
+        Modify movement rules and save them as a new ruleset. <br>
+        - Rulesets can be saved as any letter except <strong>C</strong>. <br>
+        - Movement values must be between <strong>0–7</strong>.
+    </div>
+
+
+    //the table
+    <table class="table table-bordered table-striped align-middle text-center">
+
+	//top row
+        <thead class="table-dark">
+            <tr>
+                <th>Piece</th>
+                <th>Horizontal</th>
+                <th>Vertical</th>
+                <th>Diagonal</th>
+            </tr>
+        </thead>
+
+	//the tables columns and rows
+        <tbody id="piecesTable">
+            <tr>
+                <td>Pawn</td>
+                <td><input class="form-control form-control-sm" type="number" value="1" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="1" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="0" min="0" max="7" /></td>
+            </tr>
+            <tr>
+                <td>Knight</td>
+                <td><input class="form-control form-control-sm" type="number" value="2" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="1" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="0" min="0" max="7" /></td>
+            </tr>
+            <tr>
+                <td>Bishop</td>
+                <td><input class="form-control form-control-sm" type="number" value="0" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="0" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="7" min="0" max="7" /></td>
+            </tr>
+            <tr>
+                <td>Rook</td>
+                <td><input class="form-control form-control-sm" type="number" value="7" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="7" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="0" min="0" max="7" /></td>
+            </tr>
+            <tr>
+                <td>Queen</td>
+                <td><input class="form-control form-control-sm" type="number" value="7" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="7" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="7" min="0" max="7" /></td>
+            </tr>
+            <tr>
+                <td>King</td>
+                <td><input class="form-control form-control-sm" type="number" value="1" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="1" min="0" max="7" /></td>
+                <td><input class="form-control form-control-sm" type="number" value="1" min="0" max="7" /></td>
+            </tr>
+        </tbody>
+    </table>
+
+
+
+
+
+    <div class="mb-3 row">
+        <label>Ruleset Name:</label>
+        <div class="col-sm-3">
+            <input id="rulesetLetter" class="form-control" maxlength="1" placeholder="A-Z" />
+        </div>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveRuleset()">Save Ruleset</button>
+</div>
+
+
+<script>
+async function saveRuleset() {
+    const letter = document.getElementById('rulesetLetter').value.toUpperCase();
+
+    // C is the classic mode, so cant save a ruleset as c
+    if (letter === 'C') {
+        alert("Ruleset C is reserved and cannot be used!");
+        return;
+    }
+    
+    \\Can only be a single letter
+    if (!letter.match(/^[A-Z]$/)) {
+        alert("Enter a single letter (A-Z) for the ruleset!");
+        return;
+    }
+
+    const table = document.getElementById('piecesTable').getElementsByTagName('tbody')[0];
+    const rows = Array.from(table.rows);
+
+    const rules = rows.map(row => {
+
+	//Update db
+        const horizontal = parseInt(row.cells[1].querySelector('input').value);
+        const vertical = parseInt(row.cells[2].querySelector('input').value);
+        const diagonal = parseInt(row.cells[3].querySelector('input').value);
+
+        // Validate range 0-7
+        if ([horizontal, vertical, diagonal].some(v => v < 0 || v > 7)) {
+            throw new Error(`Invalid values for ${row.cells[0].innerText}. Movement values must be 0–7.`);
+        }
+
+        return { piece_type: row.cells[0].innerText, horizontal, vertical, diagonal };
+    });
+
+    try {
+        const res = await fetch('/admin/saveRuleset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ruleset_id: letter, rules })
+        });
+
+        const data = await res.json();
+        alert(data.message);
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+
+</script>
+</body>
+</html>

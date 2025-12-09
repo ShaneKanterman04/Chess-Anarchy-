@@ -80,58 +80,79 @@ app.post('/login', (req,res) => {
 let movementCache = {};
 
 function pushOrDel(data) {
-  if (data.matchID == null) {
+  if (data.matchID == null || data.ID == null || data.role == null) {
     return;
   }
   let player1 = '';
   let player2 = '';
+  const sqlSpec = 'INSERT INTO match_spectators VALUES (?, ?)';
+  const sqlSpecDel = 'DELETE FROM match_spectators WHERE match_ID = ? AND spectator_ID = ?'
   const sqlCheck = 'SELECT player1_ID, player2_ID FROM gamematch WHERE match_ID = ?;';
   const sqlP1 = 'UPDATE gamematch SET player1_ID = ? WHERE match_ID = ?;';
   const sqlP2 = 'UPDATE gamematch SET player2_ID = ? WHERE match_ID = ?;';
-  db.query(sqlCheck, data.matchID, function (err, results, fields) {
-    if (err) {
-      throw err;
-    }
-    player1 = results[0].player1_ID;
-    player2 = results[0].player2_ID;
-    if (player1 === null && data.type == 'push') {
-      db.query(sqlP1, [data.ID, data.matchID], (err) => {
+  if (data.role == 'spectator') {
+    if (data.type == 'push') {
+      db.query(sqlSpec, [data.matchID, data.ID], (err) => {
         if (err) {
           throw err;
         }
-        console.log(data.ID, '(player 1) logged');
-      });
-    }
-    else if (player2 === null && data.type == 'push') {
-      db.query(sqlP2, [data.ID, data.matchID], (err) => {
-        if (err) {
-          throw err;
-        }
-        console.log(data.ID, '(player 2) logged');
-      });
-    }
-    else if (player1 == data.ID && data.type == 'delete') {
-      db.query(sqlP1, [null, data.matchID], (err) => {
-        if (err) {
-          throw err;
-        }
-        console.log(data.ID, '(player 1) left match:', data.matchID);
-      });
-    }
-    else if (player2 == data.ID && data.type == 'delete') {
-      db.query(sqlP2, [null, data.matchID], (err) => {
-        if (err) {
-          throw err;
-        }
-      console.log(data.ID, '(player 2) left match:', data.matchID);
+        console.log('Spectator:', data.ID, 'logged into match:', data.matchID);
       });
     }
     else {
-      console.log('player spots full');
+      db.query(sqlSpecDel, [data.matchID, data.ID], (err) => {
+        if (err) {
+          throw err;
+        }
+        console.log('Spectator:', data.ID, 'left  match:', data.matchID);
+      });
     }
-  });
+  }
+  else {
+    db.query(sqlCheck, data.matchID, function (err, results, fields) {
+      if (err) {
+        throw err;
+      }
+      player1 = results[0].player1_ID;
+      player2 = results[0].player2_ID;
+      if (player1 === null && data.type == 'push') {
+        db.query(sqlP1, [data.ID, data.matchID], (err) => {
+          if (err) {
+            throw err;
+          }
+          console.log(data.ID, '(player 1) logged');
+        });
+      }
+      else if (player2 === null && data.type == 'push') {
+        db.query(sqlP2, [data.ID, data.matchID], (err) => {
+          if (err) {
+            throw err;
+          }
+          console.log(data.ID, '(player 2) logged');
+        });
+      }
+      else if (player1 == data.ID && data.type == 'delete') {
+        db.query(sqlP1, [null, data.matchID], (err) => {
+          if (err) {
+            throw err;
+          }
+          console.log(data.ID, '(player 1) left match:', data.matchID);
+        });
+      }
+      else if (player2 == data.ID && data.type == 'delete') {
+        db.query(sqlP2, [null, data.matchID], (err) => {
+          if (err) {
+            throw err;
+          }
+        console.log(data.ID, '(player 2) left match:', data.matchID);
+        });
+      }
+      else {
+        console.log('player spots full');
+      }
+    });
+  }
 }
-
 //loading in the gamemode and piec movements
 async function loadMovementRules(rulesetID) {
   let conn;
@@ -426,13 +447,14 @@ io.on('connection', async (socket) => {
   const requestedRole = socket.handshake.query.role;
   const matchID = socket.handshake.query.matchID;
   const userID = socket.handshake.query.user;
-  const user = { id: socket.id, name: String(name), joinedAt: Date.now(), matchID: matchID, userID: userID };
+  const user = { id: socket.id, name: String(name), joinedAt: Date.now(), matchID: matchID, userID: userID, role: requestedRole};
   let playerColor;
 
   pushOrDel({
     ID: user.userID,
     type: 'push',
-    matchID: user.matchID
+    matchID: user.matchID,
+    role: user.role
   }); //calls function to put or delete into db
 
   // Load ruleset for this match if provided
@@ -611,7 +633,8 @@ io.on('connection', async (socket) => {
     pushOrDel({
       ID: user.userID,
       type: 'delete',
-      matchID: user.matchID
+      matchID: user.matchID,
+      role: user.role
     }); //calls function to delete player from match in db
     users.delete(socket.id);
     io.emit('user-left', user.id);

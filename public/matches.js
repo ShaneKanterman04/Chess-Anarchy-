@@ -4,12 +4,25 @@ socket.emit("requestMatchData", () => {
 });
 
 socket.on('matchDataRecieved', (data) => {
+	console.log(data);
+	let p1Win = '0';
+	let p1Draw = '0';
+	let p1Loss = '0';
 	const div = document.getElementById("matchID");
 	const indent = '                ';
 	const query = new URLSearchParams(window.location.search);
 	const role = query.get('role');
 	const user = query.get('user');
 	for (let key in data) {
+		if (data[key].player1Draw !== null) {
+			p1Draw = data[key].player1Draw;
+		}
+		if (data[key].player1Win !== null) {
+                         p1Win = data[key].player1Win;
+                }
+		if (data[key].player1Loss !== null) {
+                         p1Loss = data[key].player1Loss;
+                }
 		const card = document.createElement('a');
 		card.className = 'match-card';
 		
@@ -48,7 +61,7 @@ socket.on('matchDataRecieved', (data) => {
 				<span class="player-black">⚫ ${player2ID}</span>
 			</div>
 			<div class="win-loss">
-				<span class="win-loss-white">win/loss</span>
+				<span class="win-loss-white">${p1Win}/${p1Draw}/${p1Loss}</span>
 				<span class="win-loss-black">win/loss</span>
 		`;
 

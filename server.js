@@ -79,6 +79,30 @@ app.post('/login', (req,res) => {
 
 let movementCache = {};
 
+async function getWinLoss(data) {
+  try {
+    if (data.player1 !== null && data.player2 !== null) {
+      const res = await db.promise().query(`SELECT wins, draws, losses FROM user WHERE user_ID = "${data.player1}" AND user_ID = "${data.player2}";`);
+      return res[0][0];
+    }
+    else if (data.player1 !== null && data.player2 === null) {
+      const res = await db.promise().query(`SELECT wins, draws, losses FROM user WHERE user_ID = "${data.player1}";`);
+	console.log('log this',res[0][0]);
+      return res[0][0];
+    }
+    else if (data.player1 === null && data.player2 !== null) {
+      const res = await db.promise().query(`SELECT wins, draws, losses FROM user WHERE user_ID = "${data.player2}";`);
+      return res[0][0]; // Returns the first row found
+    }
+    else {
+      return {wins: 'none', draws: 'none', losses: 'none'};
+    }
+    }catch (err) {
+    console.error('Error executing query', err.stack);
+    throw err; // Re-throw the error for further handling
+  }
+}
+
 function pushOrDel(data) {
   if (data.matchID == null || data.ID == null || data.role == null) {
     return;
@@ -612,51 +636,21 @@ io.on('connection', async (socket) => {
   socket.on('requestMatchData', () => {
     let sqlWinLoss = 'SELECT wins, draws, losses FROM user WHERE user_ID = ?;';
     let player = [];
-    db.query('SELECT * FROM gamematch;', function (error, results, fields) {
+    db.query('SELECT * FROM gamematch;', async function (error, results, fields) {
       if (error) {
         console.log(error);
 	return;
       }
       for (let i = 0; i < results.length; i++) {
-	   if (results[i].player1_ID !== null && results[i].player2_ID !== null) {
-	     sqlWinLoss = 'SELECT wins, draws, losses FROM user WHERE user_ID = ? AND user_ID = ?;';
-	     player = [results[i].player1_ID,results[i].player2_ID];
-	   }
-	   else if (results[i].player1_ID !== null) {
-	     player = [results[i].player1_ID];
-	   }
-	   else if (results[i].player2_ID !== null) {
-	     player = [results[i].player2_ID];
-	   }
-	   /*else if (i == results.length -1) {
-             console.log('last i',i);
-             console.log('last results:',results);
-	   }*/
-	   else {
-	     if (i == results.length -1) {
-             //console.log('last i',i);
-             //console.log('last results:',results);
-             }
-	     continue;
-	   }
-           db.query(sqlWinLoss, player, function (err, winLossData, fields) {
-             if (err) {
-               throw err;
-             }
-	     results[i].player1Win = winLossData[0].wins;
-	     results[i].player1Draw = winLossData[0].draws;
-	     results[i].player1Loss = winLossData[0].losses;
-	     //if (i == results.length -1) {
-               //console.log('last i',i);
-               //console.log('last results:',results);
-             //}
-	    /*if (i == results.length -1) {
-	      console.log('results:',results);
-	    }*/
-           });
-       }
+	const wL = await getWinLoss({player1: results[i].player1_ID,
+		player2: results[i].player2_ID
+	});
+      results[i].player1Win = wL.wins;
+      results[i].player1Draw = wL.draws;
+      results[i].player1Loss = wL.losses;
+      }
       socket.emit('matchDataRecieved', results)
-     });
+    });
   });
 
   socket.on('disconnect', () => {

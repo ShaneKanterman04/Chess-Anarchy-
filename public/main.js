@@ -37,6 +37,7 @@
   const capturedBlackEl = document.getElementById('captured-black');
   const showTime = document.getElementById('showtime');
   const showTurn = document.getElementById('showturn');
+  const showColor = document.getElementById('showcolor');
 
   const pieceLabels = {
     br: 'bR',
@@ -531,10 +532,13 @@ function renderTimer(time) {
     // Update status to show assigned color
     if (state.color === 'w') {
       setStatus('Connected - Playing as White');
+      if (showColor) showColor.textContent = "White";
     } else if (state.color === 'b') {
       setStatus('Connected - Playing as Black');
+      if (showColor) showColor.textContent = "Black";
     } else {
       setStatus('Connected - Spectating');
+      if (showColor) showColor.textContent = "Spectator";
     }
   });
 

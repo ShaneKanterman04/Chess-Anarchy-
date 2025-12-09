@@ -1,11 +1,11 @@
-
 (function () {
   const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
   const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
+  const user = params.get('user');
   const matchID = params.get('matchID');
    
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
-  const socket = io({ query: { name: requestedName, role, matchID } });
+  const socket = io({ query: { name: requestedName, role, matchID, user} });
   window.addEventListener("beforeunload", () => {
        socket.disconnect();
    });     
@@ -17,6 +17,7 @@
     capturedWhite: [],
     capturedBlack: [],
     role,
+    user,
     color: null  // Will be set by server: 'w', 'b', or 'spectator'
   };
 
@@ -36,6 +37,7 @@
   const capturedBlackEl = document.getElementById('captured-black');
   const showTime = document.getElementById('showtime');
   const showTurn = document.getElementById('showturn');
+  const showColor = document.getElementById('showcolor');
 
   const pieceLabels = {
     br: 'bR',
@@ -154,7 +156,48 @@
     if (targetPiece && getPieceColor(targetPiece) === pieceColor) {
       return false;
     }
+
+    // Use dynamic rules if available
+    if (state.rules) {
+        const typeMap = { p: 'Pawn', r: 'Rook', n: 'Knight', b: 'Bishop', q: 'Queen', k: 'King' };
+        const typeName = typeMap[pieceType];
+        const rule = state.rules[typeName];
+
+        if (rule) {
+            const rowDiff = to.row - from.row;
+            const colDiff = to.col - from.col;
+            
+            // Special Pawn Logic (Hardcoded for now as it's complex)
+            if (typeName === 'Pawn') {
+                return isValidPawnMove(board, from, to, piece);
+            }
+            
+            // Special Knight Logic
+            if (typeName === 'Knight') {
+                 return (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 1) ||
+                        (Math.abs(rowDiff) === 1 && Math.abs(colDiff) === 2);
+            }
+            
+            // Special King Logic
+            if (typeName === 'King') {
+                return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
+            }
+
+            // Generic Rule Logic (Rook, Bishop, Queen, Custom)
+            if (rowDiff === 0 && Math.abs(colDiff) <= rule.horizontal) {
+                return isPathClear(board, from, to);
+            }
+            if (colDiff === 0 && Math.abs(rowDiff) <= rule.vertical) {
+                return isPathClear(board, from, to);
+            }
+            if (Math.abs(rowDiff) === Math.abs(colDiff) && Math.abs(rowDiff) <= rule.diagonal) {
+                return isPathClear(board, from, to);
+            }
+            return false;
+        }
+    }
     
+    // Fallback to legacy hardcoded rules
     switch (pieceType) {
       case 'p': return isValidPawnMove(board, from, to, piece);
       case 'r': return isValidRookMove(board, from, to);
@@ -223,6 +266,13 @@
       return;
     }
 
+    // Check if it's my turn
+    if (state.turn !== state.color) {
+        // Optional: Visual feedback that it's not your turn
+        console.log("Not your turn!");
+        return;
+    }
+
     socket.emit('move', {
       from: { row: selection.row, col: selection.col },
       to: { row, col }
@@ -246,15 +296,14 @@ socket.on('Timer:', (data) => {
 });
 
 socket.on('Turn:', data => {
-    if (data.turn === "w") {
-        showTurn.textContent = "White's turn";
-    } else if (data.turn === "b") {
-        showTurn.textContent = "Black's turn";
+    if (data.turn) {
+        state.turn = data.turn;
+        renderTurn(state.turn);
     }
 });
 
 function renderTurn(turn) {
-  const turnBox = document.getElementById('turn-box');
+  const turnBox = document.getElementById('showturn');
 
   if (!turnBox) return; // fail-safe
 
@@ -288,6 +337,22 @@ function renderTimer(time) {
   timerBox.textContent = formatTimer(time);
 
 }
+  function getImagePath(code) {
+    if (!code) return null;
+    const color = code[0];
+    const type = code[1];
+    let filenamePart = code;
+    
+    // Handle special cases for filenames
+    if (type === 'n') {
+        filenamePart = color + 'kn';
+    } else if (type === 'k') {
+        filenamePart = color + 'ki';
+    }
+    
+    return `img/chess_p_${filenamePart}.png`;
+  }
+
   function renderBoard(board) {
     boardEl.innerHTML = '';
     const validMoves = selection ? getValidMoves(board, selection, board[selection.row][selection.col]) : [];
@@ -311,7 +376,16 @@ function renderTimer(time) {
         }
         
         const label = labelForPiece(code);
-        button.textContent = label;
+        // button.textContent = label; // Replaced by image logic below
+        
+        if (code) {
+            const img = document.createElement('img');
+            img.src = getImagePath(code);
+            img.alt = label;
+            img.classList.add('chess-piece');
+            button.appendChild(img);
+        }
+
         button.addEventListener('click', handleCellClick);
         boardEl.appendChild(button);
       });
@@ -374,10 +448,11 @@ function renderTimer(time) {
     if (capturedWhiteEl) {
       capturedWhiteEl.innerHTML = '';
       state.capturedWhite.forEach((piece) => {
-        const span = document.createElement('span');
-        span.className = 'captured-piece';
-        span.textContent = labelForPiece(piece);
-        capturedWhiteEl.appendChild(span);
+        const img = document.createElement('img');
+        img.src = getImagePath(piece);
+        img.alt = labelForPiece(piece);
+        img.className = 'captured-piece-img';
+        capturedWhiteEl.appendChild(img);
       });
       if (state.capturedWhite.length === 0) {
         capturedWhiteEl.textContent = 'None';
@@ -387,10 +462,11 @@ function renderTimer(time) {
     if (capturedBlackEl) {
       capturedBlackEl.innerHTML = '';
       state.capturedBlack.forEach((piece) => {
-        const span = document.createElement('span');
-        span.className = 'captured-piece';
-        span.textContent = labelForPiece(piece);
-        capturedBlackEl.appendChild(span);
+        const img = document.createElement('img');
+        img.src = getImagePath(piece);
+        img.alt = labelForPiece(piece);
+        img.className = 'captured-piece-img';
+        capturedBlackEl.appendChild(img);
       });
       if (state.capturedBlack.length === 0) {
         capturedBlackEl.textContent = 'None';
@@ -437,6 +513,7 @@ function renderTimer(time) {
     state.color = payload.color || 'spectator';  // Store assigned color from server
     state.turn = payload.turn || 'w';
     state.timer = payload.timer;
+    state.rules = payload.rules; // Store ruleset
     selection = null;
     renderBoard(state.board);
     updateUsers(state.users);
@@ -455,21 +532,37 @@ function renderTimer(time) {
     // Update status to show assigned color
     if (state.color === 'w') {
       setStatus('Connected - Playing as White');
+      if (showColor) showColor.textContent = "White";
     } else if (state.color === 'b') {
       setStatus('Connected - Playing as Black');
+      if (showColor) showColor.textContent = "Black";
     } else {
       setStatus('Connected - Spectating');
+      if (showColor) showColor.textContent = "Spectator";
     }
   });
 
-  socket.on('move', ({ board, move, capturedWhite, capturedBlack }) => {
+  socket.on('move', ({ board, move, capturedWhite, capturedBlack, turn }) => {
+    console.log(`Move received. New turn: ${turn}`);
     state.board = board || state.board;
     state.moves.push(move);
     state.capturedWhite = capturedWhite || state.capturedWhite;
     state.capturedBlack = capturedBlack || state.capturedBlack;
+    if (turn) {
+        state.turn = turn;
+        renderTurn(state.turn);
+    }
     renderBoard(state.board);
     updateMoveLog(state.moves);
     renderCapturedPieces();
+  });
+
+  socket.on('invalid-move', (data) => {
+      console.log("Invalid move:", data);
+      alert(data.message);
+      // Reset selection to clear any stuck state
+      selection = null;
+      renderBoard(state.board);
   });
 
   socket.on('reset', ({ board, chat, capturedWhite, capturedBlack, match, timer }) => {
@@ -499,28 +592,28 @@ function renderTimer(time) {
   socket.on('user-joined', (user) => {
     state.users = state.users.filter((existing) => existing.id !== user.id).concat(user);
     updateUsers(state.users);
-  });
+   });
 
   socket.on('user-left', (userId) => {
     state.users = state.users.filter((user) => user.id !== userId);
     updateUsers(state.users);
   });
 
-  socket.on('chat-message', (message) => {
-    state.chat.push(message);
-    renderChat(state.chat);
+  socket.on('game-over', ({ winner, reason }) => {
+    const popup = document.getElementById('endGamePopUp');
+    const content = document.getElementById('popUpContent');
+    const winnerText = document.getElementById('winnerText');
+    
+    let winnerName = 'Draw';
+    if (winner === 'w') winnerName = 'White';
+    else if (winner === 'b') winnerName = 'Black';
+    
+    winnerText.textContent = `Game Over! Winner: ${winnerName} (${reason})`;
+    popup.style.display = 'flex';
+    content.style.display = 'block';
+    
+    // Disable board interaction
+    state.color = 'spectator'; 
   });
 
-  socket.on('invalid-move', (data) => {
-    setStatus(`Invalid move: ${data.message}`);
-    setTimeout(() => {
-      setStatus('Connected');
-    }, 3000);
-  });
-
-  socket.on('endGameHandler', (winner) => {
-    document.getElementById('winnerText').textContent = winner;
-    document.getElementById('endGamePopUp').style.display = 'block';
-    document.getElementById('popUpContent').style.display = 'block';
-  });
 })();

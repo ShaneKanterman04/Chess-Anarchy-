@@ -87,8 +87,22 @@ h1 {
 	font-weight: bold;
 }
 
+.win-loss {
+	 margin-top: 1px;
+         background: var(--bg-primary);
+         padding: 12px;
+         border-radius: var(--radius-md);
+         display: flex;
+         justify-content: space-between;
+         align-items: center;
+         font-weight: 500;
+         font-size: 0.9rem;
+}
+
+
 a {
 	text-decoration: none;
+	margin-left: 20px;
 }
 
 :link {
@@ -101,4 +115,8 @@ a:visited {
 
 a:hover {
 	color: #A9A9A9;
+}
+
+#matchID {
+	padding-left: 20px;
 }

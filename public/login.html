@@ -21,5 +21,19 @@
 	<button type="submit" class="btn btn-primary btn-block">Log in</button>
 	</form>
 	
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const error = params.get('error');
+        const errorMsg = document.getElementById('errorMessage');
+        
+        if (error === 'exists') {
+            errorMsg.textContent = "Username already exists. Please log in.";
+            errorMsg.style.display = 'block';
+        } else if (error === 'invalid') {
+             // Assuming the login route might redirect back with ?error=invalid on failure
+             // Currently it sends the file directly, but good to have for future
+             errorMsg.style.display = 'block';
+        }
+    </script>
 </body>
 </html>

@@ -6,7 +6,7 @@
   const matchID = params.get('matchID');
    
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
-  const socket = io({ query: { name: requestedName, role, matchID } });
+  const socket = io({ query: { name: requestedName, role, matchID, user} });
   window.addEventListener("beforeunload", () => {
        socket.disconnect();
    });     
@@ -526,7 +526,11 @@ function renderTimer(time) {
     document.getElementById('popUpContent').style.display = 'block';
   });
 
-  socket.on('getUserID', () => {
-    socket.emit('userID-recieved', state.user);
+  socket.on('getUserID', (method) => {
+    console.log('getuserID called', method);
+    socket.emit('userID-push-delete', {
+      ID: state.user,
+      type: method
+    });
   });
 })();

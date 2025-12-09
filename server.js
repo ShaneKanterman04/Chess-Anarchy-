@@ -79,6 +79,58 @@ app.post('/login', (req,res) => {
 
 let movementCache = {};
 
+function pushOrDel(data) {
+  if (data.matchID == null) {
+    return;
+  }
+  let player1 = '';
+  let player2 = '';
+  const sqlCheck = 'SELECT player1_ID, player2_ID FROM gamematch WHERE match_ID = ?;';
+  const sqlP1 = 'UPDATE gamematch SET player1_ID = ? WHERE match_ID = ?;';
+  const sqlP2 = 'UPDATE gamematch SET player2_ID = ? WHERE match_ID = ?;';
+  db.query(sqlCheck, data.matchID, function (err, results, fields) {
+    if (err) {
+      throw err;
+    }
+    player1 = results[0].player1_ID;
+    player2 = results[0].player2_ID;
+    if (player1 === null && data.type == 'push') {
+      db.query(sqlP1, [data.ID, data.matchID], (err) => {
+        if (err) {
+          throw err;
+        }
+        console.log(data.ID, '(player 1) logged');
+      });
+    }
+    else if (player2 === null && data.type == 'push') {
+      db.query(sqlP2, [data.ID, data.matchID], (err) => {
+        if (err) {
+          throw err;
+        }
+        console.log(data.ID, '(player 2) logged');
+      });
+    }
+    else if (player1 == data.ID && data.type == 'delete') {
+      db.query(sqlP1, [null, data.matchID], (err) => {
+        if (err) {
+          throw err;
+        }
+        console.log(data.ID, '(player 1) left match:', data.matchID);
+      });
+    }
+    else if (player2 == data.ID && data.type == 'delete') {
+      db.query(sqlP2, [null, data.matchID], (err) => {
+        if (err) {
+          throw err;
+        }
+      console.log(data.ID, '(player 2) left match:', data.matchID);
+      });
+    }
+    else {
+      console.log('player spots full');
+    }
+  });
+}
 
 //loading in the gamemode and piec movements
 async function loadMovementRules(rulesetID) {
@@ -373,10 +425,15 @@ io.on('connection', async (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
   const requestedRole = socket.handshake.query.role;
   const matchID = socket.handshake.query.matchID;
-  const user = { id: socket.id, name: String(name), joinedAt: Date.now(), matchID: matchID };
+  const userID = socket.handshake.query.user;
+  const user = { id: socket.id, name: String(name), joinedAt: Date.now(), matchID: matchID, userID: userID };
   let playerColor;
 
-  socket.emit('getUserID'); //pushes user into match in database
+  pushOrDel({
+    ID: user.userID,
+    type: 'push',
+    matchID: user.matchID
+  }); //calls function to put or delete into db
 
   // Load ruleset for this match if provided
   if (matchID) {
@@ -541,40 +598,6 @@ io.on('connection', async (socket) => {
     });
   });
 
-  socket.on('userID-recieved', (userID) => {
-    let player1 = '';
-    let player2 = '';
-    const sqlCheck = 'SELECT player1_ID, player2_ID FROM gamematch WHERE match_ID = ?;';
-    const sqlP1 = 'UPDATE gamematch SET player1_ID = ? WHERE match_ID = ?;';
-    const sqlP2 = 'UPDATE gamematch SET player2_ID = ? WHERE match_ID = ?;';
-    db.query(sqlCheck, matchID, function (err, results, fields) {
-      if (err) {
-        throw err;
-      }
-      player1 = results[0].player1_ID;
-      player2 = results[0].player2_ID;
-      if (player1 === null) {
-	db.query(sqlP1, [userID, matchID], (err) => {
-	  if (err) {
-	    throw err;
-	  }
-	  console.log(userID, '(player 1) logged');
-	});
-      }
-      else if (player2 === null) {
-        db.query(sqlP2, [userID, matchID], (err) => {
-          if (err) {
-            throw err;
-          }
-          console.log(userID, '(player 2) logged');
-        });
-      }
-      else {
-        console.log('player spots full');
-      }
-    });
-  });
-
   socket.on('disconnect', () => {
   if (match.players.white === socket.id) { //if either player leaves they lose their color
     match.players.white = null;
@@ -585,6 +608,11 @@ io.on('connection', async (socket) => {
     match.players.black = null;
     console.log("Black player disconnected, slot freed");
   }
+    pushOrDel({
+      ID: user.userID,
+      type: 'delete',
+      matchID: user.matchID
+    }); //calls function to delete player from match in db
     users.delete(socket.id);
     io.emit('user-left', user.id);
   });

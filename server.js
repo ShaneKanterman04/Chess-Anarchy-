@@ -123,6 +123,9 @@ function pushOrDel(data) {
       if (err) {
         console.error(err); return;
       }
+      if (!results || results.length === 0) {
+        return;
+      }
       player1 = results[0].player1_ID;
       player2 = results[0].player2_ID;
       if (player1 === null && data.type == 'push') {

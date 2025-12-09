@@ -52,11 +52,16 @@ app.post('/signup', (req,res) => {
   const data = [req.body.user_ID,req.body.psw];
   db.query(sql, data, (err) => {
     if (err) {
-      throw err;
+      console.error("Signup DB Error:", err);
+      // If duplicate entry, redirect to login or show error
+      if (err.code === 'ER_DUP_ENTRY') {
+          return res.redirect('/already_in?error=exists');
+      }
+      return res.status(500).send("Database error");
     };
     console.log('New user signed up: ', req.body.user_ID);
+    res.redirect(`/pre-index.html?user=${req.body.user_ID}`);
   });
-  res.redirect(`/pre-index.html?user=${req.body.user_ID}`);
 });
 
 app.post('/login', (req,res) => {
@@ -64,7 +69,8 @@ app.post('/login', (req,res) => {
   const sql = 'SELECT * FROM user WHERE user_ID = ? AND password = ?';
   db.query(sql, data, function (err, results, fields) {
     if (err) {
-	throw err;
+      console.error("Login DB Error:", err);
+      return res.status(500).send("Database error");
     }
     if (results.length > 0) {
       console.log('User: ', req.body.user_ID, 'logged in');
@@ -94,7 +100,11 @@ function pushOrDel(data) {
     if (data.type == 'push') {
       db.query(sqlSpec, [data.matchID, data.ID], (err) => {
         if (err) {
-          throw err;
+          // Ignore duplicate entry errors for spectators
+          if (err.code !== 'ER_DUP_ENTRY') {
+             console.error(err); 
+          }
+          return;
         }
         console.log('Spectator:', data.ID, 'logged into match:', data.matchID);
       });
@@ -102,7 +112,7 @@ function pushOrDel(data) {
     else {
       db.query(sqlSpecDel, [data.matchID, data.ID], (err) => {
         if (err) {
-          throw err;
+          console.error(err); return;
         }
         console.log('Spectator:', data.ID, 'left  match:', data.matchID);
       });
@@ -111,14 +121,14 @@ function pushOrDel(data) {
   else {
     db.query(sqlCheck, data.matchID, function (err, results, fields) {
       if (err) {
-        throw err;
+        console.error(err); return;
       }
       player1 = results[0].player1_ID;
       player2 = results[0].player2_ID;
       if (player1 === null && data.type == 'push') {
         db.query(sqlP1, [data.ID, data.matchID], (err) => {
           if (err) {
-            throw err;
+            console.error(err); return;
           }
           console.log(data.ID, '(player 1) logged');
         });
@@ -126,7 +136,7 @@ function pushOrDel(data) {
       else if (player2 === null && data.type == 'push') {
         db.query(sqlP2, [data.ID, data.matchID], (err) => {
           if (err) {
-            throw err;
+            console.error(err); return;
           }
           console.log(data.ID, '(player 2) logged');
         });
@@ -134,7 +144,7 @@ function pushOrDel(data) {
       else if (player1 == data.ID && data.type == 'delete') {
         db.query(sqlP1, [null, data.matchID], (err) => {
           if (err) {
-            throw err;
+            console.error(err); return;
           }
           console.log(data.ID, '(player 1) left match:', data.matchID);
         });
@@ -142,7 +152,7 @@ function pushOrDel(data) {
       else if (player2 == data.ID && data.type == 'delete') {
         db.query(sqlP2, [null, data.matchID], (err) => {
           if (err) {
-            throw err;
+            console.error(err); return;
           }
         console.log(data.ID, '(player 2) left match:', data.matchID);
         });
@@ -243,9 +253,8 @@ async function isValidMoveDB(board, from, to, piece, rulesetID) {
   const color = getPieceColor(piece);
   const typeMap = { p: 'Pawn', r: 'Rook', n: 'Knight', b: 'Bishop', q: 'Queen', k: 'King' };
   const type = typeMap[getPieceType(piece)];
-  const moveData = await getPieceMovement(type, rulesetID);
-  if (!moveData) return false;
-
+  let moveData = await getPieceMovement(type, rulesetID);
+  
   const rowDiff = to.row - from.row;
   const colDiff = to.col - from.col;
   const target = board[to.row][to.col];
@@ -276,6 +285,14 @@ async function isValidMoveDB(board, from, to, piece, rulesetID) {
 
   if (type === 'King') {
     return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
+  }
+
+  if (!moveData) {
+      // Fallback defaults for sliding pieces if no rules defined
+      if (type === 'Rook') moveData = { horizontal: 7, vertical: 7, diagonal: 0 };
+      else if (type === 'Bishop') moveData = { horizontal: 0, vertical: 0, diagonal: 7 };
+      else if (type === 'Queen') moveData = { horizontal: 7, vertical: 7, diagonal: 7 };
+      else return false;
   }
 
   if (rowDiff === 0 && Math.abs(colDiff) <= moveData.horizontal) {
@@ -356,11 +373,21 @@ app.get('/api/rulesets', async (req, res) => {
 });
 
 app.post('/create-match', (req, res) => {
-  const { ruleset, timer } = req.body;
+  const { ruleset, timer: timerInput } = req.body;
   
   // Basic validation
   if (!ruleset) {
     return res.status(400).send('Ruleset is required');
+  }
+
+  // Update global timer settings
+  if (timerInput) {
+      const newTime = parseInt(timerInput);
+      if (!isNaN(newTime) && newTime > 0) {
+          startTime = newTime;
+          timer = newTime;
+          console.log(`Timer set to ${startTime} seconds`);
+      }
   }
 
   // Insert into database
@@ -375,8 +402,8 @@ app.post('/create-match', (req, res) => {
     }
     
     console.log('Match created with ID:', results.insertId);
-    // Redirect back to admin page or match list
-    res.redirect('/matchSearch.html');
+    // Redirect to the match page as a spectator (or admin role if preferred)
+    res.redirect(`/index.html?matchID=${results.insertId}&role=spectator`);
   });
 });
 
@@ -392,6 +419,79 @@ function formatTimer (totalSeconds) {
   const formattedSeconds = String(seconds).padStart(2, '0');
 
   return `${formattedMinutes}:${formattedSeconds}`;
+}
+
+function endGame(winnerColor, reason) {
+  // 1. Determine result
+  let winnerSocketId, loserSocketId;
+  let result = ''; // 'white', 'black', 'draw'
+
+  if (winnerColor === 'w') {
+    winnerSocketId = match.players.white;
+    loserSocketId = match.players.black;
+    result = 'white';
+  } else if (winnerColor === 'b') {
+    winnerSocketId = match.players.black;
+    loserSocketId = match.players.white;
+    result = 'black';
+  } else {
+    // Draw
+    result = 'draw';
+  }
+
+  const winnerUser = users.get(winnerSocketId);
+  const loserUser = users.get(loserSocketId);
+  
+  // We need the matchID. Try to get it from users or global match object
+  const matchID = (winnerUser && winnerUser.matchID) || (loserUser && loserUser.matchID) || match.id;
+
+  console.log(`Game Over. Winner: ${winnerColor}, Reason: ${reason}, MatchID: ${matchID}`);
+
+  // 2. Update DB Stats
+  if (result !== 'draw') {
+    if (winnerUser && winnerUser.userID) {
+      db.query('UPDATE user SET wins = wins + 1 WHERE user_ID = ?', [winnerUser.userID], (err) => {
+        if (err) console.error('Error updating winner stats:', err);
+      });
+    }
+    if (loserUser && loserUser.userID) {
+      db.query('UPDATE user SET losses = losses + 1 WHERE user_ID = ?', [loserUser.userID], (err) => {
+        if (err) console.error('Error updating loser stats:', err);
+      });
+    }
+  } else {
+    // Draw logic
+    if (winnerUser && winnerUser.userID) {
+       db.query('UPDATE user SET draws = draws + 1 WHERE user_ID = ?', [winnerUser.userID], (err) => {
+        if (err) console.error('Error updating draw stats:', err);
+      });
+    }
+    if (loserUser && loserUser.userID) {
+       db.query('UPDATE user SET draws = draws + 1 WHERE user_ID = ?', [loserUser.userID], (err) => {
+        if (err) console.error('Error updating draw stats:', err);
+      });
+    }
+  }
+
+  // 3. Emit Game Over
+  io.emit('game-over', { winner: winnerColor, reason: reason });
+
+  // 4. Delete Match
+  if (matchID) {
+    // Delete spectators first (foreign key constraint?)
+    db.query('DELETE FROM match_spectators WHERE match_ID = ?', [matchID], (err) => {
+        if (err) console.error('Error deleting spectators:', err);
+        
+        // Delete match
+        db.query('DELETE FROM gamematch WHERE match_ID = ?', [matchID], (err) => {
+            if (err) console.error('Error deleting match:', err);
+            else console.log(`Match ${matchID} deleted.`);
+        });
+    });
+  }
+
+  // 5. Stop Timer
+  if (countdown) clearInterval(countdown);
 }
 
 let countdown = null;
@@ -416,7 +516,10 @@ if (match.players.white && match.players.black){ //activate when both colors are
     io.emit('Timer:',{message: "Times up!"});
     clearInterval(countdown);
     timer = startTime;
-    //code for win/stalemate cond
+    
+    const loser = match.turn;
+    const winner = loser === 'w' ? 'b' : 'w';
+    endGame(winner, 'Timeout');
     return;
    }
   },1000);  
@@ -430,14 +533,8 @@ io.emit('Timer:', { //pass timer broadcast here so the client receives the updat
     raw: timer,
     formatted: formatTimer(timer)
 });
-switch (match.turn){
-     case "w":
-	io.emit('Turn:',{turn:match.turn});
-	break;
-     case "b":
-	io.emit('Turn:',{turn:match.turn});
-	break;
-     }
+
+// Reset timer to the configured start time (Move Timer logic)
 timer = startTime;
 timerOnWhenPlayersJoin();
 }
@@ -479,6 +576,9 @@ io.on('connection', async (socket) => {
         if (!match.rulesetID) {
             match.rulesetID = rulesetID;
         }
+        if (!match.id) {
+            match.id = matchID;
+        }
       }
     } catch (err) {
       console.error('Error loading match rules:', err);
@@ -494,10 +594,10 @@ io.on('connection', async (socket) => {
 
   if (requestedRole === 'spectator' || requestedRole === 'admin') {
     playerColor = 'spectator';
-  } else if (!match.players.white) { 
+  } else if (!match.players.white || match.players.white === socket.id) { 
    match.players.white = socket.id;
    playerColor = 'w';
-  } else if (!match.players.black) { 
+  } else if (!match.players.black || match.players.black === socket.id) { 
    match.players.black = socket.id;
    playerColor = 'b';
   } else {
@@ -520,7 +620,8 @@ io.on('connection', async (socket) => {
     turn: match.turn,
     chat: game.chat,
     capturedWhite: game.capturedWhite,
-    capturedBlack: game.capturedBlack
+    capturedBlack: game.capturedBlack,
+    rules: movementCache[user.rulesetID || match.rulesetID || 'C'] || null
   });
 
   socket.broadcast.emit('user-joined', user);
@@ -533,10 +634,24 @@ io.on('connection', async (socket) => {
     if (!from || !to || !piece) return;
     if (!isOnBoard(from.row) || !isOnBoard(from.col) || !isOnBoard(to.row) || !isOnBoard(to.col)) return;
 
+    // Turn enforcement
+    const pieceColor = piece.charAt(0); // 'w' or 'b'
+    if (pieceColor !== match.turn) {
+        socket.emit('invalid-move', { message: 'Not your turn', from, to, piece });
+        return;
+    }
+    
+    // Ensure the user is playing the correct color
+    if (user.color !== 'spectator' && user.color !== pieceColor) {
+         socket.emit('invalid-move', { message: 'You can only move your own pieces', from, to, piece });
+         return;
+    }
+
     // Use the ruleset ID from the user or the match
     const rulesetID = user.rulesetID || match.rulesetID || 'C';
     const valid = await isValidMoveDB(game.board, from, to, piece, rulesetID);
     if (!valid) {
+      console.log(`Invalid move attempt by ${user.name} (${user.color}): ${piece} from ${from.row},${from.col} to ${to.row},${to.col} (Ruleset: ${rulesetID})`);
       socket.emit('invalid-move', { message: 'Invalid move for this piece', from, to, piece });
       return;
     }
@@ -545,6 +660,36 @@ io.on('connection', async (socket) => {
     if (capturedPiece) {
       if (capturedPiece.startsWith('w')) game.capturedWhite.push(capturedPiece);
       else game.capturedBlack.push(capturedPiece);
+
+      // Check for King Capture
+      if (capturedPiece.endsWith('k')) { // 'wk' or 'bk'
+          const winner = capturedPiece.startsWith('w') ? 'b' : 'w';
+          
+          // Emit move first so clients see the capture
+          game.board[to.row][to.col] = piece;
+          game.board[from.row][from.col] = null;
+          
+          const move = {
+            userId: user.id,
+            userName: user.name,
+            from,
+            to,
+            piece,
+            capturedPiece: capturedPiece,
+            timestamp: Date.now()
+          };
+          game.moves.push(move);
+          
+          io.emit('move', {
+            board: game.board,
+            move,
+            capturedWhite: game.capturedWhite,
+            capturedBlack: game.capturedBlack
+          });
+
+          endGame(winner, 'King Capture');
+          return;
+      }
     }
 
     game.board[to.row][to.col] = piece;
@@ -572,7 +717,8 @@ io.on('connection', async (socket) => {
       board: game.board,
       move,
       capturedWhite: game.capturedWhite,
-      capturedBlack: game.capturedBlack
+      capturedBlack: game.capturedBlack,
+      turn: match.turn
     });
   });
 
@@ -599,6 +745,8 @@ io.on('connection', async (socket) => {
     game.chat = [];
     game.capturedWhite = [];
     game.capturedBlack = [];
+    match.turn = 'w'; // Reset turn to white
+    timer = startTime; // Reset timer
     io.emit('reset', {
       board: game.board,
       chat: game.chat,
@@ -609,66 +757,59 @@ io.on('connection', async (socket) => {
     });
   });
 // matchData works but sql not updating parameters before next line of code showing win/loss not implemented yet
-  socket.on('requestMatchData', () => {
-    let sqlWinLoss = 'SELECT wins, draws, losses FROM user WHERE user_ID = ?;';
-    let player = [];
-    db.query('SELECT * FROM gamematch;', function (error, results, fields) {
-      if (error) {
-        console.log(error);
-	return;
-      }
-      for (let i = 0; i < results.length; i++) {
-	   if (results[i].player1_ID !== null && results[i].player2_ID !== null) {
-	     sqlWinLoss = 'SELECT wins, draws, losses FROM user WHERE user_ID = ? AND user_ID = ?;';
-	     player = [results[i].player1_ID,results[i].player2_ID];
-	   }
-	   else if (results[i].player1_ID !== null) {
-	     player = [results[i].player1_ID];
-	   }
-	   else if (results[i].player2_ID !== null) {
-	     player = [results[i].player2_ID];
-	   }
-	   /*else if (i == results.length -1) {
-             console.log('last i',i);
-             console.log('last results:',results);
-	   }*/
-	   else {
-	     if (i == results.length -1) {
-             //console.log('last i',i);
-             //console.log('last results:',results);
-             }
-	     continue;
-	   }
-           db.query(sqlWinLoss, player, function (err, winLossData, fields) {
-             if (err) {
-               throw err;
-             }
-	     results[i].player1Win = winLossData[0].wins;
-	     results[i].player1Draw = winLossData[0].draws;
-	     results[i].player1Loss = winLossData[0].losses;
-	     //if (i == results.length -1) {
-               //console.log('last i',i);
-               //console.log('last results:',results);
-             //}
-	    /*if (i == results.length -1) {
-	      console.log('results:',results);
-	    }*/
-           });
-       }
-      socket.emit('matchDataRecieved', results)
-     });
+  socket.on('requestMatchData', async () => {
+    try {
+        const [matches] = await db.promise().query('SELECT * FROM gamematch;');
+        
+        for (let match of matches) {
+            // Initialize defaults
+            match.player1Win = 0; match.player1Draw = 0; match.player1Loss = 0;
+            match.player2Win = 0; match.player2Draw = 0; match.player2Loss = 0;
+
+            if (match.player1_ID) {
+                const [rows] = await db.promise().query('SELECT wins, draws, losses FROM user WHERE user_ID = ?', [match.player1_ID]);
+                if (rows.length > 0) {
+                    match.player1Win = rows[0].wins;
+                    match.player1Draw = rows[0].draws;
+                    match.player1Loss = rows[0].losses;
+                }
+            }
+            
+            if (match.player2_ID) {
+                const [rows] = await db.promise().query('SELECT wins, draws, losses FROM user WHERE user_ID = ?', [match.player2_ID]);
+                if (rows.length > 0) {
+                    match.player2Win = rows[0].wins;
+                    match.player2Draw = rows[0].draws;
+                    match.player2Loss = rows[0].losses;
+                }
+            }
+        }
+        
+        socket.emit('matchDataRecieved', matches);
+    } catch (err) {
+        console.error("Error fetching match data:", err);
+    }
   });
 
   socket.on('disconnect', () => {
-  if (match.players.white === socket.id) { //if either player leaves they lose their color
+  // Check if the user was a player and free the slot
+  if (match.players.white === socket.id) { 
     match.players.white = null;
     console.log("White player disconnected, slot freed");
-  }
-
-  if (match.players.black === socket.id) {
+  } else if (match.players.black === socket.id) {
     match.players.black = null;
     console.log("Black player disconnected, slot freed");
   }
+  
+  // Also check by userID to handle reconnects where socket ID changed but user is same
+  // This is a bit of a hack for the single-match global state
+  if (user.color === 'w' && match.players.white === null) {
+      // Already handled above
+  } else if (user.color === 'w') {
+      // If user was white but socket ID didn't match (shouldn't happen if users map is correct)
+      // But if they reconnected, the old socket is gone.
+  }
+  
     pushOrDel({
       ID: user.userID,
       type: 'delete',

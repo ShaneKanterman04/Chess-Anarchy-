@@ -48,8 +48,9 @@ socket.on('matchDataRecieved', (data) => {
 				<span class="player-black">⚫ ${player2ID}</span>
 			</div>
 			<div class="win-loss">
-				<span class="win-loss-white">win/loss</span>
-				<span class="win-loss-black">win/loss</span>
+				<span class="win-loss-white">W:${data[key].player1Win || 0} D:${data[key].player1Draw || 0} L:${data[key].player1Loss || 0}</span>
+				<span class="win-loss-black">W:${data[key].player2Win || 0} D:${data[key].player2Draw || 0} L:${data[key].player2Loss || 0}</span>
+			</div>
 		`;
 
 		card.appendChild(title);

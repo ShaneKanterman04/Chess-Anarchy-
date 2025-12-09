@@ -167,20 +167,23 @@
             const rowDiff = to.row - from.row;
             const colDiff = to.col - from.col;
             
-            // Special Pawn Logic (Hardcoded for now as it's complex)
-            if (typeName === 'Pawn') {
-                return isValidPawnMove(board, from, to, piece);
-            }
-            
-            // Special Knight Logic
-            if (typeName === 'Knight') {
-                 return (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 1) ||
-                        (Math.abs(rowDiff) === 1 && Math.abs(colDiff) === 2);
-            }
-            
-            // Special King Logic
-            if (typeName === 'King') {
-                return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
+            // Only use hardcoded logic for Classic ruleset 'C'
+            if (state.rulesetID === 'C') {
+                // Special Pawn Logic (Hardcoded for now as it's complex)
+                if (typeName === 'Pawn') {
+                    return isValidPawnMove(board, from, to, piece);
+                }
+                
+                // Special Knight Logic
+                if (typeName === 'Knight') {
+                     return (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 1) ||
+                            (Math.abs(rowDiff) === 1 && Math.abs(colDiff) === 2);
+                }
+                
+                // Special King Logic
+                if (typeName === 'King') {
+                    return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
+                }
             }
 
             // Generic Rule Logic (Rook, Bishop, Queen, Custom)
@@ -514,6 +517,7 @@ function renderTimer(time) {
     state.turn = payload.turn || 'w';
     state.timer = payload.timer;
     state.rules = payload.rules; // Store ruleset
+    state.rulesetID = payload.rulesetID || 'C';
     selection = null;
     renderBoard(state.board);
     updateUsers(state.users);

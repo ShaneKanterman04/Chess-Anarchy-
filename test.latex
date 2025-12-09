@@ -1,0 +1,250 @@
+
+\documentclass[10pt]{article}
+\usepackage[margin=0.5in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{multicol}
+\usepackage{enumitem}
+\usepackage{titlesec}
+
+\titleformat{\section}{\fontsize{9}{10}\selectfont\bfseries}{\thesection}{0.5em}{}
+\titleformat{\subsection}{\fontsize{8}{9}\selectfont\bfseries}{\thesubsection}{0.5em}{}
+
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+
+\begin{document}
+\fontsize{10}\selectfont
+
+
+\begin{center}
+\textbf{Calculus I Cheat Sheet -- Sample Final}\\
+\end{center}
+
+\begin{multicols}{2}
+
+\section*{1. Limits: ``What value do we get close to?''}
+
+A limit asks: as $x$ gets closer to some number, what value does the function get closer to?
+We care about the behavior near the point, not necessarily the value exactly at that point.
+
+Example:
+\[
+\lim_{x\to 2}\frac{x^2-4}{x-2}.
+\]
+Direct substitution gives $0/0$, which is undefined. Factor:
+\[
+\frac{x^2-4}{x-2} = \frac{(x-2)(x+2)}{x-2} = x+2 \quad (x\neq 2).
+\]
+As $x\to 2$, $x+2\to 4$. So the limit is $4$ even though the original formula is undefined at $x=2$.
+
+\subsection*{Key Limit Facts}
+\begin{itemize}[leftmargin=*]
+\item $\displaystyle \lim_{x\to a}c = c$ for any constant $c$.
+\item $\displaystyle \lim_{x\to a}(f+g)=\lim f + \lim g$, and similarly for $-$, $\cdot$, $\div$ (when denominator limit $\neq 0$).
+\item $\displaystyle \lim_{x\to 0}\frac{\sin x}{x}=1$ so
+      $\displaystyle \lim_{x\to 0}\frac{\sin(kx)}{x}=k$.
+\item For rational functions, if degrees match:
+      $\displaystyle \lim_{x\to\pm\infty}\frac{ax^n+\dots}{bx^n+\dots}=\frac{a}{b}$.
+\end{itemize}
+
+\subsection*{TI-84: Numeric Limit via Table}
+\begin{enumerate}[leftmargin=*]
+\item Press \textbf{Y=} and enter the function, e.g.\ \verb|(x^2-4)/(x-2)|.
+\item Press \textbf{2nd $\to$ TBLSET}. Set \textbf{TblStart} close to the $x$-value (e.g.\ $2$) and choose a small $\Delta$Tbl like $0.001$.
+\item Press \textbf{2nd $\to$ TABLE}. Read values as $x$ approaches the point from left and right.
+\end{enumerate}
+
+\section*{2. Continuity: ``No jumps or holes''}
+
+A function $f$ is continuous at $x=a$ if all three are true:
+\begin{enumerate}[leftmargin=*]
+\item $f(a)$ is defined.
+\item $\displaystyle \lim_{x\to a^-}f(x) = \lim_{x\to a^+}f(x)$.
+\item The common limit equals $f(a)$.
+\end{enumerate}
+
+For a piecewise function, plug $x=a$ into each piece to get the left- and right-hand limits, compare them, and compare with $f(a)$.
+
+\section*{3. Asymptotes}
+
+\subsection*{Vertical Asymptotes}
+A vertical asymptote at $x=c$ occurs when $f(x)$ grows without bound near $c$:
+\[
+\lim_{x\to c}f(x)=\pm\infty.
+\]
+Typical cause: denominator $0$ but numerator not $0$ after simplification.
+
+\subsection*{Horizontal Asymptotes}
+A horizontal asymptote $y=L$ occurs when
+\[
+\lim_{x\to\pm\infty} f(x)=L.
+\]
+For rational functions:
+\begin{itemize}[leftmargin=*]
+\item Degree top $<$ degree bottom $\Rightarrow$ HA: $y=0$.
+\item Degrees equal $\Rightarrow$ HA: ratio of leading coefficients.
+\item Degree top $>$ degree bottom $\Rightarrow$ no horizontal asymptote.
+\end{itemize}
+
+\subsection*{TI-84: Check Behavior at Infinity}
+Evaluate the function at a huge positive and negative $x$:
+\[
+x=1\text{E}6,\quad x=-1\text{E}6.
+\]
+On the home screen, type for example \verb|(5*(1E6)^2-1E6+1)/(2*(1E6)^2+7)|.
+
+\section*{4. Derivatives: ``Instantaneous rate of change''}
+
+The derivative $f'(x)$ measures how fast $f$ is changing at $x$ (slope of the tangent line).
+
+\subsection*{Basic Rules}
+\begin{align*}
+\frac{d}{dx}(x^n) &= n x^{n-1} \quad (n\neq -1),\\
+\frac{d}{dx}(c) &= 0,\\
+(uv)' &= u'v + uv' \quad\text{(Product Rule)},\\
+\left(\frac{u}{v}\right)' &= \frac{u'v - uv'}{v^2} \quad\text{(Quotient Rule)},\\
+\frac{d}{dx}f(g(x)) &= f'(g(x))g'(x)\quad\text{(Chain Rule)},\\
+\frac{d}{dx}e^{kx} &= k e^{kx},\\
+\frac{d}{dx}\ln u &= \frac{u'}{u}.
+\end{align*}
+
+\subsection*{Implicit Differentiation Idea}
+Differentiate both sides with respect to $x$, treating $y$ as a function $y(x)$ and using the chain rule on terms involving $y$, then solve for $dy/dx$.
+
+\subsection*{TI-84: Numeric Derivative}
+\begin{enumerate}[leftmargin=*]
+\item Press \textbf{MATH} $\to$ option \textbf{8: nDeriv(}.
+\item Enter \verb|nDeriv(f(x), x, a)| to approximate $f'(a)$.
+\end{enumerate}
+
+\section*{5. Tangent Lines}
+
+To find the equation of the tangent line to $y=f(x)$ at $x=a$:
+\begin{enumerate}[leftmargin=*]
+\item Compute the slope $m=f'(a)$.
+\item Compute the point $(a,f(a))$.
+\item Use point-slope form:
+      \[
+      y-f(a)=m(x-a).
+      \]
+\end{enumerate}
+
+TI-84: use \verb|nDeriv(f(x), x, a)| to get $m$ quickly.
+
+
+\section*{6. Critical Points, Increasing/Decreasing, Concavity}
+
+\textbf{Critical points:} where $f'(x)=0$ or $f'(x)$ is undefined and $f$ is defined.
+
+\begin{itemize}[leftmargin=*]
+\item $f$ is \textbf{increasing} where $f'(x)>0$.
+\item $f$ is \textbf{decreasing} where $f'(x)<0$.
+\end{itemize}
+
+\textbf{Second derivative test:}
+\begin{itemize}[leftmargin=*]
+\item If $f'(c)=0$ and $f''(c)>0$ $\Rightarrow$ local minimum.
+\item If $f'(c)=0$ and $f''(c)<0$ $\Rightarrow$ local maximum.
+\end{itemize}
+
+\textbf{Concavity:}
+\begin{itemize}[leftmargin=*]
+\item $f''(x)>0$ $\Rightarrow$ graph is concave up.
+\item $f''(x)<0$ $\Rightarrow$ graph is concave down.
+\item An inflection point occurs where $f''$ changes sign.
+\end{itemize}
+
+\section*{7. Fundamental Theorem of Calculus (FTC)}
+
+\subsection*{Part 1}
+If $F(x)=\displaystyle\int_{0}^{x} f(t)\,dt$, then
+\[
+F'(x)=f(x).
+\]
+Idea: derivative of an accumulation function is the original rate.
+
+\subsection*{Part 2}
+If $F$ is an antiderivative of $f$, then
+\[
+\int_{a}^{b} f(x)\,dx = F(b)-F(a).
+\]
+Idea: to compute a definite integral, find any antiderivative and subtract values at the bounds.
+
+\section*{8. Antiderivatives (Indefinite Integrals)}
+
+\begin{align*}
+\int x^n\,dx &= \frac{x^{n+1}}{n+1}+C \quad (n\neq -1),\\
+\int \sin x\,dx &= -\cos x + C,\\
+\int \cos x\,dx &= \sin x + C,\\
+\int \sec^2(kx)\,dx &= \frac{1}{k}\tan(kx)+C,\\
+\int \frac{1}{x}\,dx &= \ln|x|+C.
+\end{align*}
+
+\section*{9. $u$-Substitution (Change of Variables)}
+
+Use $u$-substitution when you see a function and its derivative in the integrand.
+
+General steps:
+\begin{enumerate}[leftmargin=*]
+\item Choose $u$ to be an inner expression, e.g.\ $u=x^2+1$.
+\item Compute $du$ and rewrite $dx$ in terms of $du$.
+\item Change the integral to $u$-variables and integrate.
+\item For definite integrals, either change limits to $u$-values or convert back to $x$ and plug in.
+\end{enumerate}
+
+Example:
+\[
+\int_{0}^{1}\frac{2x}{\sqrt{x^2+1}}\,dx.
+\]
+Let $u=x^2+1$, $du=2x\,dx$. When $x=0$, $u=1$; when $x=1$, $u=2$.
+\[
+\int_{1}^{2} u^{-1/2}\,du = \left[2u^{1/2}\right]_{1}^{2}=2(\sqrt{2}-1).
+\]
+
+\section*{10. Definite Integrals and Area}
+
+To compute $\displaystyle\int_{a}^{b}f(x)\,dx$:
+\begin{enumerate}[leftmargin=*]
+\item Find an antiderivative $F(x)$.
+\item Plug in upper and lower bounds: $F(b)-F(a)$.
+\end{enumerate}
+
+If $f(x)$ stays above the $x$-axis, the integral is the (positive) area.
+If $f(x)$ goes below, that part of area counts as negative (``net area'').
+
+\section*{11. TI-84: Definite Integrals}
+
+\begin{enumerate}[leftmargin=*]
+\item Press \textbf{MATH} $\to$ option \textbf{9: fnInt(}.
+\item Type \verb|fnInt(expression, x, lower, upper)|.
+\item Example: \verb|fnInt(3x^2-4x+1, x, 0, 2)|.
+\item Example: \verb|fnInt(sin(x)*cos(x), x, 0, π/2)| where $\pi$ is \textbf{2nd} $\to$ \verb|π|.
+\end{enumerate}
+
+\section*{12. TI-84: Summary of Useful Keys}
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Y=}: enter functions to graph.
+\item \textbf{WINDOW}: set viewing window.
+\item \textbf{2nd$\to$TABLE}: see numeric values.
+\item \textbf{MATH$\to$8}: \verb|nDeriv(| for numeric derivatives.
+\item \textbf{MATH$\to$9}: \verb|fnInt(| for numeric definite integrals.
+\item \textbf{2nd$\to$TRACE}: CALC menu (value, zero, min, max, etc.).
+\end{itemize}
+
+\section*{13. Big Picture}
+
+\begin{itemize}[leftmargin=*]
+\item \textbf{Limits}: behavior as $x$ approaches a value.
+\item \textbf{Continuity}: no jumps, holes, or vertical breaks.
+\item \textbf{Derivatives}: instantaneous rate of change; slope of tangent.
+\item \textbf{Critical points}: where $f'(x)=0$ or undefined; candidates for max/min.
+\item \textbf{Concavity \& inflection}: determined by $f''(x)$.
+\item \textbf{Integrals}: total accumulation or net area.
+\item \textbf{$u$-substitution}: change of variable to simplify integrals.
+\item \textbf{FTC}: differentiation and integration undo each other.
+\end{itemize}
+
+\end{multicols}
+
+\end{document}

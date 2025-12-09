@@ -267,28 +267,31 @@ async function isValidMoveDB(board, from, to, piece, rulesetID) {
 
    //piece logic
 
-   if (type === 'Pawn') {
-   const direction = color === 'w' ? -1 : 1;
-   const startRow = color === 'w' ? 6 : 1;
+   // Only use hardcoded logic for Classic ruleset 'C'
+   if (rulesetID === 'C') {
+       if (type === 'Pawn') {
+       const direction = color === 'w' ? -1 : 1;
+       const startRow = color === 'w' ? 6 : 1;
 
-    if (colDiff === 0 && rowDiff === direction && !target) return true;
-    
-    if (colDiff === 0 && rowDiff === 2 * direction && from.row === startRow &&
-        !target && !board[from.row + direction][from.col]) return true;
+        if (colDiff === 0 && rowDiff === direction && !target) return true;
+        
+        if (colDiff === 0 && rowDiff === 2 * direction && from.row === startRow &&
+            !target && !board[from.row + direction][from.col]) return true;
 
-    if (Math.abs(colDiff) === 1 && rowDiff === direction && target && target[0] !== color) return true;
+        if (Math.abs(colDiff) === 1 && rowDiff === direction && target && target[0] !== color) return true;
 
-    return false;
-  }
+        return false;
+      }
 
-  if (type === 'Knight') {
-    return (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 1) ||
-           (Math.abs(rowDiff) === 1 && Math.abs(colDiff) === 2);
-  }
+      if (type === 'Knight') {
+        return (Math.abs(rowDiff) === 2 && Math.abs(colDiff) === 1) ||
+               (Math.abs(rowDiff) === 1 && Math.abs(colDiff) === 2);
+      }
 
-  if (type === 'King') {
-    return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
-  }
+      if (type === 'King') {
+        return Math.abs(rowDiff) <= 1 && Math.abs(colDiff) <= 1;
+      }
+   }
 
   if (!moveData) {
       // Fallback defaults for sliding pieces if no rules defined
@@ -624,7 +627,8 @@ io.on('connection', async (socket) => {
     chat: game.chat,
     capturedWhite: game.capturedWhite,
     capturedBlack: game.capturedBlack,
-    rules: movementCache[user.rulesetID || match.rulesetID || 'C'] || null
+    rules: movementCache[user.rulesetID || match.rulesetID || 'C'] || null,
+    rulesetID: user.rulesetID || match.rulesetID || 'C'
   });
 
   socket.broadcast.emit('user-joined', user);

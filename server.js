@@ -35,10 +35,13 @@ const pool = mariadb.createPool({
   connectionLimit: 5
 });
 
-<<<<<<< HEAD
-/*app.post('userInMatch', (req, res) => {
+app.post('user-In-Match', (req, res) => {
   console.log(req.body);
-});*/ //post for ajax call if working
+}); //post for ajax call if working
+
+app.get('/', (req, res) => {
+   res.sendFile(path.join(__dirname,'public','sign-up.html'));
+ });
 
 app.get('/already_in', (req, res) => {
   res.sendFile(path.join(__dirname,'public','login.html'));
@@ -73,10 +76,6 @@ app.post('/login', (req,res) => {
     }
   });
 });
-=======
-
-
->>>>>>> main
 
 let movementCache = {};
 
@@ -308,9 +307,6 @@ app.post('/create-match', (req, res) => {
   });
 });
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/pre-index.html'));
-});
 app.use(express.static('public'));
 
 function formatTimer (totalSeconds) {
@@ -377,9 +373,10 @@ io.on('connection', async (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
   const requestedRole = socket.handshake.query.role;
   const matchID = socket.handshake.query.matchID;
-  
   const user = { id: socket.id, name: String(name), joinedAt: Date.now(), matchID: matchID };
   let playerColor;
+
+  socket.emit('getUserID'); //pushes user into match in database
 
   // Load ruleset for this match if provided
   if (matchID) {
@@ -544,19 +541,39 @@ io.on('connection', async (socket) => {
     });
   });
 
-  socket.on('userInMatch', function (data,err) { // socket not called, disconnect form socket error happening
-    console.log('user in match called' + data);
-    if (err) {
-	throw err;
-	}
-    });/* beginning of query check if called
-    sqlCheck = 'SELECT player1_ID, player2_ID FROM gamematch WHERE match_ID = ?;';
-    db.query(sqlCheck, data, function (err, results, fields) {
+  socket.on('userID-recieved', (userID) => {
+    let player1 = '';
+    let player2 = '';
+    const sqlCheck = 'SELECT player1_ID, player2_ID FROM gamematch WHERE match_ID = ?;';
+    const sqlP1 = 'UPDATE gamematch SET player1_ID = ? WHERE match_ID = ?;';
+    const sqlP2 = 'UPDATE gamematch SET player2_ID = ? WHERE match_ID = ?;';
+    db.query(sqlCheck, matchID, function (err, results, fields) {
       if (err) {
         throw err;
       }
+      player1 = results[0].player1_ID;
+      player2 = results[0].player2_ID;
+      if (player1 === null) {
+	db.query(sqlP1, [userID, matchID], (err) => {
+	  if (err) {
+	    throw err;
+	  }
+	  console.log(userID, '(player 1) logged');
+	});
+      }
+      else if (player2 === null) {
+        db.query(sqlP2, [userID, matchID], (err) => {
+          if (err) {
+            throw err;
+          }
+          console.log(userID, '(player 2) logged');
+        });
+      }
+      else {
+        console.log('player spots full');
+      }
     });
-    const sql = 'UPDATE gamematch SET name = ?, email = ? WHERE id = ?';*/
+  });
 
   socket.on('disconnect', () => {
   if (match.players.white === socket.id) { //if either player leaves they lose their color

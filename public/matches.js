@@ -14,10 +14,10 @@ socket.on('matchDataRecieved', (data) => {
 		card.className = 'match-card';
 		
 		if (role == 'player') {
-			card.href = '/index.html?role=player&matchID=' + data[key].match_ID;
+			card.href = '/index.html?role=player&matchID=' + data[key].match_ID + '&user=' + user;
 		}
 		else {
-			card.href = '/index.html?role=spectator&matchID=' + data[key].match_ID;
+			card.href = '/index.html?role=spectator&matchID=' + data[key].match_ID + '&user=' + user;
 		}
 
 		let player1ID = data[key].player1_ID;

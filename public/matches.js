@@ -47,6 +47,9 @@ socket.on('matchDataRecieved', (data) => {
 				<span class="vs">vs</span>
 				<span class="player-black">⚫ ${player2ID}</span>
 			</div>
+			<div class="win-loss">
+				<span class="win-loss-white">win/loss</span>
+				<span class="win-loss-black">win/loss</span>
 		`;
 
 		card.appendChild(title);

@@ -608,16 +608,55 @@ io.on('connection', async (socket) => {
       timer: timer
     });
   });
-
+// matchData works but sql not updating parameters before next line of code showing win/loss not implemented yet
   socket.on('requestMatchData', () => {
+    let sqlWinLoss = 'SELECT wins, draws, losses FROM user WHERE user_ID = ?;';
+    let player = [];
     db.query('SELECT * FROM gamematch;', function (error, results, fields) {
       if (error) {
         console.log(error);
+	return;
       }
-      else {
-        socket.emit('matchDataRecieved', results)
-      }
-    });
+      for (let i = 0; i < results.length; i++) {
+	   if (results[i].player1_ID !== null && results[i].player2_ID !== null) {
+	     sqlWinLoss = 'SELECT wins, draws, losses FROM user WHERE user_ID = ? AND user_ID = ?;';
+	     player = [results[i].player1_ID,results[i].player2_ID];
+	   }
+	   else if (results[i].player1_ID !== null) {
+	     player = [results[i].player1_ID];
+	   }
+	   else if (results[i].player2_ID !== null) {
+	     player = [results[i].player2_ID];
+	   }
+	   /*else if (i == results.length -1) {
+             console.log('last i',i);
+             console.log('last results:',results);
+	   }*/
+	   else {
+	     if (i == results.length -1) {
+             //console.log('last i',i);
+             //console.log('last results:',results);
+             }
+	     continue;
+	   }
+           db.query(sqlWinLoss, player, function (err, winLossData, fields) {
+             if (err) {
+               throw err;
+             }
+	     results[i].player1Win = winLossData[0].wins;
+	     results[i].player1Draw = winLossData[0].draws;
+	     results[i].player1Loss = winLossData[0].losses;
+	     //if (i == results.length -1) {
+               //console.log('last i',i);
+               //console.log('last results:',results);
+             //}
+	    /*if (i == results.length -1) {
+	      console.log('results:',results);
+	    }*/
+           });
+       }
+      socket.emit('matchDataRecieved', results)
+     });
   });
 
   socket.on('disconnect', () => {

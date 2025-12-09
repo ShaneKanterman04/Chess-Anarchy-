@@ -13,14 +13,6 @@ const db = mysql.createPool({
   connectionLimit : 10
 });
 
-db.query('SHOW TABLES;', function (error, results, fields) {
-  if (error) {
-    console.log(error);
-    return;
-  }
-  console.log('Rows: ', results);
-});
-
 const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json()); // Ensure JSON body parsing is enabled
@@ -43,12 +35,124 @@ const pool = mariadb.createPool({
   connectionLimit: 5
 });
 
+app.post('user-In-Match', (req, res) => {
+  console.log(req.body);
+}); //post for ajax call if working
 
+app.get('/', (req, res) => {
+   res.sendFile(path.join(__dirname,'public','sign-up.html'));
+ });
 
+app.get('/already_in', (req, res) => {
+  res.sendFile(path.join(__dirname,'public','login.html'));
+});
+
+app.post('/signup', (req,res) => {
+  const sql = 'INSERT INTO user (user_ID, password) VALUES (?, ?)';
+  const data = [req.body.user_ID,req.body.psw];
+  db.query(sql, data, (err) => {
+    if (err) {
+      throw err;
+    };
+    console.log('New user signed up: ', req.body.user_ID);
+  });
+  res.redirect(`/pre-index.html?user=${req.body.user_ID}`);
+});
+
+app.post('/login', (req,res) => {
+  const data = [req.body.user_ID, req.body.psw];
+  const sql = 'SELECT * FROM user WHERE user_ID = ? AND password = ?';
+  db.query(sql, data, function (err, results, fields) {
+    if (err) {
+	throw err;
+    }
+    if (results.length > 0) {
+      console.log('User: ', req.body.user_ID, 'logged in');
+      res.redirect(`/pre-index.html?user=${req.body.user_ID}`);
+    }
+    else {
+      console.log("Login error, info doesn't match");
+      res.sendFile(path.join(__dirname,'public','login.html'));
+    }
+  });
+});
 
 let movementCache = {};
 
-
+function pushOrDel(data) {
+  if (data.matchID == null || data.ID == null || data.role == null) {
+    return;
+  }
+  let player1 = '';
+  let player2 = '';
+  const sqlSpec = 'INSERT INTO match_spectators VALUES (?, ?)';
+  const sqlSpecDel = 'DELETE FROM match_spectators WHERE match_ID = ? AND spectator_ID = ?'
+  const sqlCheck = 'SELECT player1_ID, player2_ID FROM gamematch WHERE match_ID = ?;';
+  const sqlP1 = 'UPDATE gamematch SET player1_ID = ? WHERE match_ID = ?;';
+  const sqlP2 = 'UPDATE gamematch SET player2_ID = ? WHERE match_ID = ?;';
+  if (data.role == 'spectator') {
+    if (data.type == 'push') {
+      db.query(sqlSpec, [data.matchID, data.ID], (err) => {
+        if (err) {
+          throw err;
+        }
+        console.log('Spectator:', data.ID, 'logged into match:', data.matchID);
+      });
+    }
+    else {
+      db.query(sqlSpecDel, [data.matchID, data.ID], (err) => {
+        if (err) {
+          throw err;
+        }
+        console.log('Spectator:', data.ID, 'left  match:', data.matchID);
+      });
+    }
+  }
+  else {
+    db.query(sqlCheck, data.matchID, function (err, results, fields) {
+      if (err) {
+        throw err;
+      }
+      player1 = results[0].player1_ID;
+      player2 = results[0].player2_ID;
+      if (player1 === null && data.type == 'push') {
+        db.query(sqlP1, [data.ID, data.matchID], (err) => {
+          if (err) {
+            throw err;
+          }
+          console.log(data.ID, '(player 1) logged');
+        });
+      }
+      else if (player2 === null && data.type == 'push') {
+        db.query(sqlP2, [data.ID, data.matchID], (err) => {
+          if (err) {
+            throw err;
+          }
+          console.log(data.ID, '(player 2) logged');
+        });
+      }
+      else if (player1 == data.ID && data.type == 'delete') {
+        db.query(sqlP1, [null, data.matchID], (err) => {
+          if (err) {
+            throw err;
+          }
+          console.log(data.ID, '(player 1) left match:', data.matchID);
+        });
+      }
+      else if (player2 == data.ID && data.type == 'delete') {
+        db.query(sqlP2, [null, data.matchID], (err) => {
+          if (err) {
+            throw err;
+          }
+        console.log(data.ID, '(player 2) left match:', data.matchID);
+        });
+      }
+      else {
+        console.log('player spots full');
+      }
+    });
+  }
+}
 //loading in the gamemode and piec movements
 async function loadMovementRules(rulesetID) {
   let conn;
@@ -276,9 +380,6 @@ app.post('/create-match', (req, res) => {
   });
 });
 
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/pre-index.html'));
-});
 app.use(express.static('public'));
 
 function formatTimer (totalSeconds) {
@@ -345,9 +446,16 @@ io.on('connection', async (socket) => {
   const name = socket.handshake.query.name || `user-${users.size + 1}`;
   const requestedRole = socket.handshake.query.role;
   const matchID = socket.handshake.query.matchID;
-  
-  const user = { id: socket.id, name: String(name), joinedAt: Date.now(), matchID: matchID };
+  const userID = socket.handshake.query.user;
+  const user = { id: socket.id, name: String(name), joinedAt: Date.now(), matchID: matchID, userID: userID, role: requestedRole};
   let playerColor;
+
+  pushOrDel({
+    ID: user.userID,
+    type: 'push',
+    matchID: user.matchID,
+    role: user.role
+  }); //calls function to put or delete into db
 
   // Load ruleset for this match if provided
   if (matchID) {
@@ -500,17 +608,55 @@ io.on('connection', async (socket) => {
       timer: timer
     });
   });
-
+// matchData works but sql not updating parameters before next line of code showing win/loss not implemented yet
   socket.on('requestMatchData', () => {
+    let sqlWinLoss = 'SELECT wins, draws, losses FROM user WHERE user_ID = ?;';
+    let player = [];
     db.query('SELECT * FROM gamematch;', function (error, results, fields) {
       if (error) {
         console.log(error);
+	return;
       }
-      else {
-        console.log('match data info: ', results);
-        socket.emit('matchDataRecieved', results)
-      }
-    });
+      for (let i = 0; i < results.length; i++) {
+	   if (results[i].player1_ID !== null && results[i].player2_ID !== null) {
+	     sqlWinLoss = 'SELECT wins, draws, losses FROM user WHERE user_ID = ? AND user_ID = ?;';
+	     player = [results[i].player1_ID,results[i].player2_ID];
+	   }
+	   else if (results[i].player1_ID !== null) {
+	     player = [results[i].player1_ID];
+	   }
+	   else if (results[i].player2_ID !== null) {
+	     player = [results[i].player2_ID];
+	   }
+	   /*else if (i == results.length -1) {
+             console.log('last i',i);
+             console.log('last results:',results);
+	   }*/
+	   else {
+	     if (i == results.length -1) {
+             //console.log('last i',i);
+             //console.log('last results:',results);
+             }
+	     continue;
+	   }
+           db.query(sqlWinLoss, player, function (err, winLossData, fields) {
+             if (err) {
+               throw err;
+             }
+	     results[i].player1Win = winLossData[0].wins;
+	     results[i].player1Draw = winLossData[0].draws;
+	     results[i].player1Loss = winLossData[0].losses;
+	     //if (i == results.length -1) {
+               //console.log('last i',i);
+               //console.log('last results:',results);
+             //}
+	    /*if (i == results.length -1) {
+	      console.log('results:',results);
+	    }*/
+           });
+       }
+      socket.emit('matchDataRecieved', results)
+     });
   });
 
   socket.on('disconnect', () => {
@@ -523,6 +669,12 @@ io.on('connection', async (socket) => {
     match.players.black = null;
     console.log("Black player disconnected, slot freed");
   }
+    pushOrDel({
+      ID: user.userID,
+      type: 'delete',
+      matchID: user.matchID,
+      role: user.role
+    }); //calls function to delete player from match in db
     users.delete(socket.id);
     io.emit('user-left', user.id);
   });

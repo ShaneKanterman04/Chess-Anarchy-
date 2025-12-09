@@ -2,10 +2,11 @@
 (function () {
   const params = new URLSearchParams(window.location.search); //turns "index" and "role" URL into an object
   const role = (params.get('role') || 'spectator').toLowerCase(); //reads role from url; if role undefined/null, use spectator as fallback
+  const user = params.get('user');
   const matchID = params.get('matchID');
    
   const requestedName = (window.prompt('Enter a display name (optional):') || '').trim();
-  const socket = io({ query: { name: requestedName, role, matchID } });
+  const socket = io({ query: { name: requestedName, role, matchID, user} });
   window.addEventListener("beforeunload", () => {
        socket.disconnect();
    });     
@@ -17,6 +18,7 @@
     capturedWhite: [],
     capturedBlack: [],
     role,
+    user,
     color: null  // Will be set by server: 'w', 'b', or 'spectator'
   };
 
@@ -499,7 +501,7 @@ function renderTimer(time) {
   socket.on('user-joined', (user) => {
     state.users = state.users.filter((existing) => existing.id !== user.id).concat(user);
     updateUsers(state.users);
-  });
+   });
 
   socket.on('user-left', (userId) => {
     state.users = state.users.filter((user) => user.id !== userId);
@@ -522,5 +524,13 @@ function renderTimer(time) {
     document.getElementById('winnerText').textContent = winner;
     document.getElementById('endGamePopUp').style.display = 'block';
     document.getElementById('popUpContent').style.display = 'block';
+  });
+
+  socket.on('getUserID', (method) => {
+    console.log('getuserID called', method);
+    socket.emit('userID-push-delete', {
+      ID: state.user,
+      type: method
+    });
   });
 })();

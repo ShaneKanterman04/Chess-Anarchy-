@@ -38,7 +38,6 @@ const pool = mariadb.createPool({
   password: 'Team05!!',
   database: 'chess',
   connectionLimit: 5
->>>>>>> main
 });
 
 app.post('user-In-Match', (req, res) => {
